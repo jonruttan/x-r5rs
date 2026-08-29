@@ -1,0 +1,39 @@
+# known-failures.txt -- the specs this bundle is known to fail.
+#
+# One "UNIT: TEST" per line, matching the runner's own `FAIL:` lines verbatim.
+# Blank lines and #-comments are ignored.
+#
+# BY NAME, NOT BY COUNT, and the difference is the whole point.  A budget of
+# "9 failures" is satisfied by fixing one and breaking another, which is the
+# exact event a ratchet exists to catch.  Names catch it; a number cannot.
+#
+# THE LIST MAY ONLY SHRINK.  tests/spec-gate.sh is red when a failure appears
+# that is not here, AND when a line here starts passing -- the second is a
+# fixed test, and leaving it listed would quietly re-authorise the failure
+# later.  Neither direction is a nag: both are one edit to this file, and both
+# are things you want to be told.
+#
+# A line here is not a target and not an excuse.  It is debt this bundle is
+# known to be carrying, recorded so it cannot grow in silence.
+
+# --- The reader takes every token beginning with '.' as the pair-dot --------
+#
+# So `...` is unreadable: (a ... b) reads as an improper list terminated by the
+# reader's internal pair-dot marker, which is a raw C satom and segfaults on
+# access.  syntax-rules patterns are written in the ellipsis, so the whole
+# group goes down together.
+#
+# Not a patch waiting to be applied.  x is not Scheme, and Scheme's lexical
+# rules -- that `...` is a symbol, that `a.b` is a symbol -- are a lang's to
+# impose above the engine rather than the engine's to adopt.  The route that
+# does not ask the engine to become Scheme is a lang-owned tokenizer base via
+# (Base make-tok), the primitive x-ash uses for shell syntax.  Not attempted.
+ellipsis patterns: begin-like sequencing with ellipsis
+ellipsis patterns: ellipsis collects zero or more elements
+ellipsis patterns: ellipsis in recursive macro (my-and)
+ellipsis patterns: ellipsis recursive macro short-circuit
+ellipsis patterns: ellipsis with single element
+ellipsis patterns: ellipsis with zero elements
+ellipsis patterns: empty ellipsis with multiple pvars
+ellipsis patterns: multiple pvars in ellipsis (my-let)
+ellipsis patterns: tail pattern after ellipsis

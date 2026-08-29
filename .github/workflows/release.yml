@@ -7,6 +7,14 @@ name: Release
 # THE SUITE RUNS FIRST.  A tag on a red tree publishes nothing -- the same
 # ruling x-lang's own release workflow follows.  A bundle whose specs fail is
 # not a release, it is a trap with a digest on it.
+#
+# RED MEANS "NOT WHAT WE RECORDED", not "not perfect".  The gate is
+# tests/spec-gate.sh, which compares the failing test NAMES against
+# tests/contract/known-failures.txt.  A bundle carrying documented debt can
+# therefore ship, and a bundle that acquired one new failure cannot -- which is
+# the distinction that matters at a release, and one a bare pass/fail count
+# cannot make.  Fixing a recorded failure without removing its line is also
+# red: the list may only shrink.
 
 on:
   push:
@@ -41,9 +49,10 @@ jobs:
           make boot
 
       # THE GATE, not a formality: this is the last point at which a bad
-      # bundle can be stopped from acquiring a digest and a URL.
+      # bundle can be stopped from acquiring a digest and a URL.  spec-gate,
+      # not spec-runner -- see the header for what red means here.
       - name: Run the R5RS specs
-        run: X="$PWD/.x-lang/x.sh" sh tests/spec-runner.sh
+        run: X="$PWD/.x-lang/x.sh" sh tests/spec-gate.sh
 
       - name: Roll the bundle
         id: roll

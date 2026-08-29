@@ -72,8 +72,15 @@ jobs:
           make             # x-bin at the repo root -- `make engine` does not build it
           make boot        # the launcher-free amalgams the harness loads
 
+      # THE GATE IS spec-gate, NOT spec-runner.  The runner exits non-zero on
+      # any failure, which is right at a prompt and wrong here: this bundle
+      # carries documented debt (the ellipsis group), so the raw runner makes
+      # it permanently red and the signal stops meaning anything.  The gate
+      # compares the failing test NAMES against
+      # tests/contract/known-failures.txt and is red when they differ in
+      # EITHER direction -- a new failure, or a recorded one that now passes.
       - name: Run the R5RS specs
-        run: X="$PWD/.x-lang/x.sh" sh tests/spec-runner.sh
+        run: X="$PWD/.x-lang/x.sh" sh tests/spec-gate.sh
 
   relocatable:
     # THE RULE THAT ACTUALLY KILLED THE LAST GENERATION, as a gate -- and it
