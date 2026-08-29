@@ -18,8 +18,18 @@
 
 ; XENON, derived from a measurement rather than a preference.  Scheme's numerics
 ; ARE the tower: string->number falls back to %float, and 20-numeric-tower
-; exercises rationals and complexes.  It is not radon -- the only thing wanting
-; dlopen was scm/ports.scm, which this release does not load.
+; exercises rationals and complexes.
+;
+; PORTS DID NOT MOVE IT, though the note in scm/ports.scm predicted they would.
+; That prediction was about the 2024 implementation, which used dlopen -- a
+; radon opt-in.  The rewrite drives File instead, and r5rs/base.x reaches it
+; with an explicit (import x/sys/file): a dialect decides what is PRELOADED,
+; not what is reachable, so importing a module the dialect skips is ordinary
+; rather than a violation.
+;
+; Measured both ways rather than reasoned about: 667/16 under xe and 667/16
+; under rn, with ports loaded in each.  The dialect row is a requirement, so it
+; should only move when something actually requires it to.
 (dialect xe)
 
 ; PAIRING, NOT PINNING.  A digest freezes bytes; it says nothing about whether

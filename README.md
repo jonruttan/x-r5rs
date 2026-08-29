@@ -16,22 +16,38 @@ $ x -l r5rs
 
 ## Status
 
-**625 of 663 specs green** against x-lang **v0.7.0** and an x-engine-c carrying
-the [#527](https://github.com/jonruttan/x-lang/issues/527) fix.
+**651 of 667 specs green** against x-lang **v0.7.0**.
 
 Third of the five 2024-era langs to come back, after [x-krn](../x-krn)
-and [x-sweet](../x-sweet), and by far the largest — 687 tests across 26 spec
+and [x-sweet](../x-sweet), and by far the largest — 667 tests across 26 spec
 files against roughly 1,700 lines of Scheme.
 
-The 38 that do not pass are three groups, and none of them is a loose end
-someone forgot:
+The 16 that do not pass are two groups, and neither is a loose end someone
+forgot:
 
 | | count | why |
 |---|---|---|
-| **Ports** | 21 | `scm/ports.scm` is not loaded — a rewrite, not a port. See below. |
-| **`syntax-rules` ellipsis** | 9 | Blocked on the platform reader: `...` is unreadable ([x-lang#158](https://github.com/jonruttan/x-lang/issues/158)). |
+| **`syntax-rules` ellipsis** | 9 | The reader takes every token beginning with `.` as the pair-dot, so `...` is unreadable. The fix is a design question in the engine's tokenizer, not a patch. |
 | **Exactness** | 7 | `(magnitude 3+4i)` is `5.0` where the 2024 suite expects `5`. |
-| **`let-syntax` in a define body** | 1 | Downstream of the ellipsis blocker. |
+
+**Ports work now** (R5RS §6.6), which is the 21 that used to head this table.
+`scm/ports.scm` was 249 lines of hand-rolled FFI — `dlopen`/`ptr-call` against
+libc, `obj-make` for a raw buffer object, and a hand-walked map of the base
+object's internal tree to reach the file table. `obj-make` had been removed
+outright, so it was a rewrite rather than a port.
+
+It drives `File` now — open/close/read/write/getc as syscalls, with a collector
+that knows about the buffers — and nothing in it reaches into the base's
+layout, so nothing in it breaks when that layout moves again. Redirection and
+transcripts do not shadow `display` or `write`: the platform's printer already
+emits through a swappable sink, so `with-output-to-file` and `transcript-on`
+swap that instead of re-implementing every renderer the verbs reach.
+
+The bundle stays on `(dialect xe)`. The old note predicted that restoring ports
+would force it to radon, and that was true of the `dlopen` version — but a
+dialect decides what is *preloaded*, not what is *reachable*, so an explicit
+`(import x/sys/file)` is enough. Measured both ways with ports loaded: 667/16
+under `xe`, 667/16 under `rn`.
 
 ## Running it
 
@@ -130,22 +146,26 @@ quote/quasiquote/comma reader types built with `compile-batch`. The platform
 ships `lib/x/reader/lit-reader.x` and `quasi-reader.x` now, and `'` and `` ` ``
 work out of the box. Porting it would have been re-implementing the platform.
 
-## The three groups that remain
-
-**Ports (21).** `scm/ports.scm` is 249 lines of hand-rolled FFI — `dlopen`,
-`ptr-call`, and `obj-make` to build a raw buffer. `obj-make` no longer exists
-at all, and the platform grew `File` and `x/type/io`, which do the job with a
-collector that knows about the buffers. That is a rewrite against a better
-substrate, scoped as its own work. Restoring it also moves
-`lang.xon`'s `(dialect xe)` to `rn`, since `dlopen` is a radon opt-in —
-exactly the kind of change that row exists to make visible.
+## The two groups that remain
 
 **Ellipsis (9).** Every token beginning with `.` reaches x-lang as the dot
 sentinel, so `(a ... b)` reads as `('a . #<ATOM:…>)` — an improper list holding
 a leaked C satom, which segfaults on `(first (rest …))`. `syntax-rules` cannot
-be written until the reader distinguishes a lone `.` from a symbol that starts
-with one. Nothing in a lang can work around it. Details added to
-[x-lang#158](https://github.com/jonruttan/x-lang/issues/158).
+be written until a lone `.` is distinguishable from a token that merely starts
+with one.
+
+It is not obviously the engine's job to fix. **x is not Scheme**, and Scheme's
+lexical rules — that `a.b` is a symbol, that `...` is a symbol — are the
+lang's to impose, above the engine, not the engine's to adopt. What is
+arguably the engine's own defect is narrower: its internal pair-dot marker
+escapes into data as a value and crashes on access, which is wrong in x's terms
+whatever a dot is supposed to mean.
+
+The route that does not ask the engine to become Scheme is a lang-owned
+tokenizer base — `(Base make-tok)`, which is what x-ash uses for shell syntax
+and what that primitive is documented for. It is a real lift for a lang that
+otherwise wants x's s-expression reader, and it has not been attempted here.
+Background on [x-lang#158](https://github.com/jonruttan/x-lang/issues/158).
 
 **Exactness (7).** `(magnitude (make-rectangular 3 4))` is `5.0`, `(sin 0)` is
 `0.0`, `(number->string 3.0)` is `"3.0"`. The last of those is what R5RS

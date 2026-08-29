@@ -82,10 +82,14 @@
 (include-once "./scm/string.scm")
 (include-once "./scm/numeric.scm")
 (include-once "./scm/control.scm")
-; scm/ports.scm is NOT loaded, and the omission is deliberate rather than an
-; oversight -- see the note at the top of that file.  It is 249 lines of
-; hand-rolled FFI against dlopen/ptr-call/obj-make, and obj-make no longer
-; exists at all; meanwhile the platform now ships File and x/type/io.  That is
-; a rewrite against a better substrate, not a port, and it is scoped as its own
-; piece of work.  Cost: the 26 tests in tests/specs/19-ports.spec.md.
+; Ports, rewritten against File and the platform's print sink rather than the
+; 2024 dlopen/ptr-call/obj-make FFI -- see the note at the top of that file.
+;
+; x/sys/file is an opt-in module in EVERY dialect -- x/rn.x leaves it commented
+; out too -- so it is imported here rather than assumed.  That import is also
+; why the bundle stays on (dialect xe): a dialect decides what is preloaded,
+; not what is reachable, so ports did not have to drag this bundle to radon the
+; way the 2024 dlopen version would have.
+(import x/sys/file)
+(include-once "./scm/ports.scm")
 (include-once "./scm/macro.scm")
