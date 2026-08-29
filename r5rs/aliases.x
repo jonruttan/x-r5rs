@@ -114,8 +114,15 @@
 ; every `define` called nil and bound nothing.  663 of 663 specs failed on
 ; unbound symbols, with no diagnostic pointing anywhere near here.  A prim-ref
 ; miss is indistinguishable from a legitimate nil until it is far away.
+; THE VALUE IS QUOTED, and leaving it bare is a bug that hides for a long time.
+; (list (lit def) n v) builds (def name <value>) and eval! then EVALUATES it --
+; so the value is evaluated a second time.  Numbers, strings and procedures
+; self-evaluate and nothing looks wrong; a SYMBOL value gets looked up.
+;   (define %ellipsis-sym (string->symbol "..."))
+; therefore died with `Unbound SYMBOL '...'`, three files away from the cause.
+; Wrapping in (lit ...) makes def bind the value it was handed.
 (def %def-global
-  (fn (_ n v) (eval! (list (lit def) n v))))
+  (fn (_ n v) (eval! (list (lit def) n (list (lit lit) v)))))
 (def define
   (op (name-or-form . body)
     e
