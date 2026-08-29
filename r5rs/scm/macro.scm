@@ -276,11 +276,45 @@
 ; syntax-rules: returns a transformer fn (lexically scoped closure)
 ; Captures literals, clauses, and def-env for hygiene
 
+; TEMPLATES ARE REWRITTEN BEFORE THEY ARE INSTANTIATED, and this is the only
+; place the rewrite can happen.
+;
+; A macro whose template is a definition -- ((_ var) (define var 1)) -- must not
+; leak that binding out of the expansion.  R5RS pitfall 3.2, which this suite
+; tests by name.  The expansion is evaluated in a frame, so a plain `def` binds
+; there and leaves with it, while `define` binds globally and escapes.
+;
+; It cannot be fixed after instantiation.  %sr-instantiate resolves an
+; introduced identifier to its VALUE -- that IS the hygiene mechanism -- so an
+; expanded definition arrives as (#<op> y 1), not (define y 1), and there is no
+; way to recognise it: `eq?` does not discriminate operatives, and
+; (eq? cond define) answers #t.  Here in the template the head is still the
+; symbol `define`, which is exactly what %r5rs-def-form matches.
+;
+; The leak has always been there.  It only became VISIBLE once define stopped
+; depending on frame depth -- before that the global binding was made and then
+; discarded when the frame unwound, so the suite passed by accident.
+(define
+  %sr-rewrite-clause
+  (lambda (c)
+    (if (pair? c)
+      (if (pair? (cdr c))
+        (cons (car c) (cons (%r5rs-def-form (cadr c)) (cddr c)))
+        c)
+      c)))
+
+(define
+  %sr-rewrite-clauses
+  (lambda (cs)
+    (if (null? cs) () (cons (%sr-rewrite-clause (car cs))
+                            (%sr-rewrite-clauses (cdr cs))))))
+
 (define
   syntax-rules
   (op (literals . clauses)
     sr-env
-    (lambda (form) (%sr-expand form literals clauses sr-env))))
+    (let ((clauses (%sr-rewrite-clauses clauses)))
+      (lambda (form) (%sr-expand form literals clauses sr-env)))))
 
 ; define-syntax: bind name to a syntax transformer
 ; Strategy: store transformer fn under a gensym, bind name to an op

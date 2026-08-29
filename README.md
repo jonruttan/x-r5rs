@@ -159,37 +159,32 @@ being evidence, which is the whole reason this generation of personalities was
 worth resurrecting rather than replacing.
 
 
-## A known hygiene defect: macro-introduced definitions leak
+## The hygiene leak, and where it had to be fixed
 
-`scm/macro.scm` lets a definition produced by a macro escape into the global
-environment. R5RS says it must not — the suite tests exactly this and names it
-pitfall 3.2 — and both the `define-syntax` and `let-syntax` paths leak:
+`scm/macro.scm` let a macro-introduced definition escape into the global
+environment — R5RS pitfall 3.2, which this suite tests by name. It had always
+leaked; it only became *visible* once `define` stopped depending on frame depth,
+because before that the global binding was made and then discarded when the
+expansion's frame unwound. The suite passed by accident.
 
-```scheme
-(define-syntax dsfoo (syntax-rules () ((_ var) (define var 777))))
-(let ((y 2)) (dsfoo y) y)   ; => 2, correctly
-y                           ; => 777, and it should be unbound
-```
+**It cannot be fixed after instantiation, and that is the interesting part.**
+`%sr-instantiate` resolves an introduced identifier to its *value* — that is the
+hygiene mechanism doing its job — so an expanded definition arrives as
+`(#<op> y 1)`, not `(define y 1)`. There is no way to recognise it there:
+`eq?` does not discriminate operatives, and `(eq? cond define)` answers `#t`.
 
-**It has always leaked. It only became visible when `define` stopped depending
-on frame depth.** Before that the binding was made and then silently discarded
-when the expansion's frame unwound, so the suite passed by accident.
+Two attempts failed on exactly that. Evaluating the expansion in the use-site
+environment does not help, because `eval`-with-env deliberately does not restore
+the BST and `define` binds through it. Rewriting the expansion does not help,
+because by then the head is an operative.
 
-What it costs today is one test, sixty lines further down the same file:
-`(define-syntax make-adder … (lambda (x) (+ x n)))` expands, its `x` resolves to
-a leaked global `x = 1` from the pitfall-3.2 case above, and `(add5 10)` answers
-`6` instead of `15`. That is the whole of the difference between this bundle's
-count on an engine with the [#527](https://github.com/jonruttan/x-lang/issues/527)
-fix and one without.
+The fix is in `syntax-rules`, on the **template**, before instantiation — where
+the head is still the symbol `define` and the same `%r5rs-def-form` rewrite
+`lambda` uses for body-position definitions applies cleanly. A definition
+produced into an expression context becomes a plain `def`, which binds in the
+frame the expansion runs in and leaves with it.
 
-Two fixes were tried and neither worked: evaluating the expansion in the
-use-site environment with `(eval expr env)` rather than `eval!`, and putting the
-expansion through the same body-position rewrite `lambda` uses. Both were
-measured neutral, which says the expansion is not routed through the
-`define-syntax`/`let-syntax` sites they patch. Finding the real route is the
-next step, and it belongs with the rest of the `syntax-rules` work — the
-ellipsis group is 10 of the remaining failures and is blocked on
-[#158](https://github.com/jonruttan/x-lang/issues/158) anyway.
+Both paths are covered by specs now, and the two engines agree at 37.
 
 ## Licence
 
