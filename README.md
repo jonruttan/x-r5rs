@@ -16,10 +16,10 @@ $ x -l r5rs
 
 ## Status
 
-**625 of 663 specs green** against x-lang **0.5.2** and an x-engine-c carrying
+**625 of 663 specs green** against x-lang **v0.6.0** and an x-engine-c carrying
 the [#527](https://github.com/jonruttan/x-lang/issues/527) fix.
 
-Third of the five 2024-era personalities to come back, after [x-krn](../x-krn)
+Third of the five 2024-era langs to come back, after [x-krn](../x-krn)
 and [x-sweet](../x-sweet), and by far the largest — 687 tests across 26 spec
 files against roughly 1,700 lines of Scheme.
 
@@ -36,22 +36,19 @@ someone forgot:
 ## Running it
 
 ```bash
-X=/path/to/x-lang/x.sh sh tests/spec-runner.sh
+make test        # the spec suite
+make install     # into the x on PATH
 ```
 
-A prompt needs the bridge the other two bundles need
-([x-lang#519](https://github.com/jonruttan/x-lang/issues/519)):
-
-```bash
-ln -s "$PWD" /path/to/x-lang/apps/r5rs
-```
-
-then, from the x-lang repo root, `./x.sh -l r5rs`.
+then `x -l r5rs`. `make install` puts the bundle where `-l` looks — an installed
+x searches `<share>/langs/*/lang.xon`, so a lang is installed when its files
+are there. No registry, no per-project pin. Use `lang.pin.xon` and `Pin bundle`
+instead when it matters which version.
 
 ## Layout
 
 ```
-personality.xon     name, dialect, release pairing
+lang.xon     name, dialect, release pairing
 run.x               THE entry -- the only file that may know a path
 r5rs/aliases.x      Scheme's names in x's current spellings -- where the rot was
 r5rs/prims.x        the raw type layer, under its 2024 names
@@ -98,7 +95,7 @@ shape nothing in x shares (first argument a list of binding *lists*), and
 everything else is handed back to the platform's operative, captured as
 `%r5rs-seq` before the shadow goes up. Filed as
 [x-lang#525](https://github.com/jonruttan/x-lang/issues/525), because the
-contract's central promise is that a personality may re-mean a shared spelling,
+contract's central promise is that a lang may re-mean a shared spelling,
 and this is a spelling where it cannot.
 
 **Interior defines never worked** — the same defect x-krn had, for the same
@@ -140,14 +137,14 @@ work out of the box. Porting it would have been re-implementing the platform.
 at all, and the platform grew `File` and `x/type/io`, which do the job with a
 collector that knows about the buffers. That is a rewrite against a better
 substrate, scoped as its own work. Restoring it also moves
-`personality.xon`'s `(dialect xe)` to `rn`, since `dlopen` is a radon opt-in —
+`lang.xon`'s `(dialect xe)` to `rn`, since `dlopen` is a radon opt-in —
 exactly the kind of change that row exists to make visible.
 
 **Ellipsis (9).** Every token beginning with `.` reaches x-lang as the dot
 sentinel, so `(a ... b)` reads as `('a . #<ATOM:…>)` — an improper list holding
 a leaked C satom, which segfaults on `(first (rest …))`. `syntax-rules` cannot
 be written until the reader distinguishes a lone `.` from a symbol that starts
-with one. Nothing in a personality can work around it. Details added to
+with one. Nothing in a lang can work around it. Details added to
 [x-lang#158](https://github.com/jonruttan/x-lang/issues/158).
 
 **Exactness (7).** `(magnitude (make-rectangular 3 4))` is `5.0`, `(sin 0)` is
