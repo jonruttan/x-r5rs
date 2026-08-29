@@ -16,19 +16,16 @@ $ x -l r5rs
 
 ## Status
 
-**651 of 667 specs green** against x-lang **v0.7.0**.
+**658 of 667 specs green** against x-lang **v0.7.0**.
 
 Third of the five 2024-era langs to come back, after [x-krn](../x-krn)
 and [x-sweet](../x-sweet), and by far the largest — 667 tests across 26 spec
 files against roughly 1,700 lines of Scheme.
 
-The 16 that do not pass are two groups, and neither is a loose end someone
-forgot:
-
-| | count | why |
-|---|---|---|
-| **`syntax-rules` ellipsis** | 9 | The reader takes every token beginning with `.` as the pair-dot, so `...` is unreadable. The fix is a design question in the engine's tokenizer, not a patch. |
-| **Exactness** | 7 | `(magnitude 3+4i)` is `5.0` where the 2024 suite expects `5`. |
+The 9 that do not pass are all one thing: the reader takes every token
+beginning with `.` as the pair-dot, so `...` is unreadable and `syntax-rules`
+patterns cannot be written. That is a design question in the engine's
+tokenizer rather than a patch — see below.
 
 **Ports work now** (R5RS §6.6), which is the 21 that used to head this table.
 `scm/ports.scm` was 249 lines of hand-rolled FFI — `dlopen`/`ptr-call` against
@@ -146,7 +143,7 @@ quote/quasiquote/comma reader types built with `compile-batch`. The platform
 ships `lib/x/reader/lit-reader.x` and `quasi-reader.x` now, and `'` and `` ` ``
 work out of the box. Porting it would have been re-implementing the platform.
 
-## The two groups that remain
+## What remains, and what was fixed
 
 **Ellipsis (9).** Every token beginning with `.` reaches x-lang as the dot
 sentinel, so `(a ... b)` reads as `('a . #<ATOM:…>)` — an improper list holding
@@ -167,13 +164,28 @@ and what that primitive is documented for. It is a real lift for a lang that
 otherwise wants x's s-expression reader, and it has not been attempted here.
 Background on [x-lang#158](https://github.com/jonruttan/x-lang/issues/158).
 
-**Exactness (7).** `(magnitude (make-rectangular 3 4))` is `5.0`, `(sin 0)` is
-`0.0`, `(number->string 3.0)` is `"3.0"`. The last of those is what R5RS
-actually requires and the 2024 expectation was wrong; the first two are the
-tower returning inexact where R5RS permits exact. **The expectations have not
-been edited to match.** A suite rewritten to agree with current behaviour stops
-being evidence, which is the whole reason this generation of personalities was
-worth resurrecting rather than replacing.
+**Exactness — fixed, and it split two ways.** Four were the implementation's
+fault: R5RS 6.2.5 permits an exact result where the argument is exact and the
+value is exactly representable, `sqrt` in `scm/numeric.scm` already took that
+permission — `(sqrt 4)` is `2`, not `2.0` — and `sin`, `cos`, `exp` and
+`magnitude` did not. They do now, and only where the mathematics is exact
+rather than where a float happens to look round.
+
+Three were the **suite's** fault, and were corrected against the standard
+rather than against our output — the distinction the paragraph below turns on:
+
+| | was | is | rule |
+|---|---|---|---|
+| `(number->string (exact->inexact 3))` | `3` | `3.0` | 6.2.6 — it must read back with the same exactness |
+| `(log (exp 1))` | `1` | `1.0` | `(exp 1)` is inexact, so the result is |
+| `(+ 1/2 1.5)` | `2` | `2.0` | 6.2.2 — exactness is contagious |
+
+**No expectation was edited to agree with behaviour.** Each of those three
+contradicted R5RS on the day it was written, and each carries its citation in
+the spec file. A suite rewritten to match the implementation stops being
+evidence, which is the whole reason this generation of langs was worth
+resurrecting rather than replacing — but a suite that contradicts the standard
+it tests was never evidence in the first place.
 
 
 ## The hygiene leak, and where it had to be fixed

@@ -254,11 +254,16 @@
 
 ### rational + float
 
+Exactness is contagious: R5RS 6.2.2 requires that if any argument is inexact,
+the result is inexact.  1/2 is exact and 1.5 is not, so the sum is the inexact
+2.0 -- the promotion this section is named for.  The 2024 expectation of `2`
+asserted the opposite of the rule it was testing.
+
 ```scheme
 (+ 1/2 1.5)
 ```
 ---
-    2
+    2.0
 
 ### integer + complex
 

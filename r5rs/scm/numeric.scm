@@ -160,27 +160,63 @@
     (let ((s (inexact->exact (fsqrt (exact->inexact x)))))
       (if (= (* s s) x) s (fsqrt (exact->inexact x))))
     (fsqrt (if (float? x) x (exact->inexact x)))))
+; --- The exact special cases of the transcendental functions ---------------
+;
+; R5RS 6.2.5 says these "in general" return inexact results, and permits an
+; exact one where the argument is exact and the value is exactly representable.
+; `sqrt` above already takes that permission -- (sqrt 4) is 2, not 2.0 -- and
+; these are the same rule applied to the handful of arguments whose value is
+; exact by definition rather than by luck of the arithmetic.
+;
+; It matters for more than tidiness: the float path answers 0.0 where R5RS
+; programs branch on (= (sin 0) 0) and on exact?, and it makes an exact
+; computation go inexact at the first trig call and stay there.
+;
+; ONLY WHERE THE MATHEMATICS IS EXACT, never where the float merely looks
+; round.  sin 0 is exactly 0 and cos 0 exactly 1; sin of any other exact
+; argument is irrational.  (log (exp 1)) is NOT in this set -- (exp 1) is
+; inexact, and an inexact argument must give an inexact result whatever the
+; digits come out as.
+(define (%exact-int? x) (and (%int-number? x) (exact? x)))
+
 (define
   sin
-  (lambda (x) (fsin (if (float? x) x (exact->inexact x)))))
+  (lambda (x)
+    (if (and (%exact-int? x) (= x 0))
+      0
+      (fsin (if (float? x) x (exact->inexact x))))))
 (define
   cos
-  (lambda (x) (fcos (if (float? x) x (exact->inexact x)))))
+  (lambda (x)
+    (if (and (%exact-int? x) (= x 0))
+      1
+      (fcos (if (float? x) x (exact->inexact x))))))
 (define
   tan
-  (lambda (x) (ftan (if (float? x) x (exact->inexact x)))))
+  (lambda (x)
+    (if (and (%exact-int? x) (= x 0))
+      0
+      (ftan (if (float? x) x (exact->inexact x))))))
 (define
   asin
-  (lambda (x) (fasin (if (float? x) x (exact->inexact x)))))
+  (lambda (x)
+    (if (and (%exact-int? x) (= x 0))
+      0
+      (fasin (if (float? x) x (exact->inexact x))))))
 (define
   acos
-  (lambda (x) (facos (if (float? x) x (exact->inexact x)))))
+  (lambda (x)
+    (if (and (%exact-int? x) (= x 1))
+      0
+      (facos (if (float? x) x (exact->inexact x))))))
 (define
   atan
   (lambda
     (x . rest)
     (if (null? rest)
-      (fatan (if (float? x) x (exact->inexact x)))
+      (if (and (%exact-int? x) (= x 0))
+        0
+        (fatan (if (float? x) x (exact->inexact x))))
       (fatan2
         (if (float? x) x (exact->inexact x))
         (if (float? (car rest))
@@ -188,10 +224,33 @@
           (exact->inexact (car rest)))))))
 (define
   (exp x)
-  (fexp (if (float? x) x (exact->inexact x))))
+  (if (and (%exact-int? x) (= x 0))
+    1
+    (fexp (if (float? x) x (exact->inexact x)))))
 (define
   (log x)
-  (flog (if (float? x) x (exact->inexact x))))
+  (if (and (%exact-int? x) (= x 1))
+    0
+    (flog (if (float? x) x (exact->inexact x)))))
+
+; --- magnitude, exact where the triangle is --------------------------------
+;
+; The same permission sqrt takes, for the same reason: (magnitude 3+4i) is
+; exactly 5 when the parts are exact, and answering 5.0 turns an exact
+; computation inexact at the first call.  A 3-4-5 triangle is not a rounding
+; accident -- the test is whether the squared magnitude is a perfect square,
+; computed exactly, exactly as sqrt does it.
+;
+; Falls back to the class for everything else, so inexact parts, non-integer
+; parts and non-representable magnitudes all keep the float answer.
+(define %complex-magnitude magnitude)
+(define (magnitude z)
+  (let ((r (real-part z)) (i (imag-part z)))
+    (if (and (%exact-int? r) (%exact-int? i))
+      (let ((sq (+ (* r r) (* i i))))
+        (let ((s (inexact->exact (fsqrt (exact->inexact sq)))))
+          (if (= (* s s) sq) s (%complex-magnitude z))))
+      (%complex-magnitude z))))
 
 ; --- Generic number->string / string->number ---
 

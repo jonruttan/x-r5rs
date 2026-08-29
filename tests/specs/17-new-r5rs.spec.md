@@ -332,11 +332,17 @@
 
 ### log of e
 
+`(exp 1)` is e, which is irrational and therefore inexact however exact the
+argument was.  An inexact argument cannot yield a provably exact result, so the
+answer is inexact here whatever the digits come to.  Contrast `(log 1)` and
+`(exp 0)` above, which ARE exact: their arguments are exact and their values
+are exact by definition rather than by rounding.
+
 ```scheme
 (display (log (exp 1)))
 ```
 ---
-    1
+    1.0
 
 ### atan with one arg
 
@@ -374,11 +380,16 @@
 
 ### number->string float
 
+R5RS 6.2.6 requires `(string->number (number->string x))` to give back a number
+`eqv?` to `x` -- exactness included.  `"3"` reads back as the EXACT 3, and the
+argument here is inexact, so `"3.0"` is the only answer that round-trips.  The
+2024 expectation of `3` was wrong when it was written.
+
 ```scheme
 (display (number->string (exact->inexact 3)))
 ```
 ---
-    3
+    3.0
 
 ### string->number valid integer
 
