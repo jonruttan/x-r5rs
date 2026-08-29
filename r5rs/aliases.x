@@ -121,8 +121,29 @@
 ;   (define %ellipsis-sym (string->symbol "..."))
 ; therefore died with `Unbound SYMBOL '...'`, three files away from the cause.
 ; Wrapping in (lit ...) makes def bind the value it was handed.
+; TWO MECHANISMS, BECAUSE ONE OF THEM IS NOT ENOUGH ON ITS OWN.
+;
+; eval! evaluates with no env save/restore, so a `def` inside it lands in
+; whatever env is CURRENT.  At top level that is global and everything works.
+; It is not frame-independent: interpose one operative frame -- which
+; shadowing any late-bound name does, R7RS `guard` being the live case --
+; and the binding lands in that frame and is discarded with it.  Measured:
+; with a bare passthrough guard loaded, (define v 42), (define (f p) p) and
+; (define f (lambda (p) p)) ALL bind nothing.
+;
+; (base def-global) takes `def`'s top-level path unconditionally and is
+; frame-independent.  It is not in engine v0.1.2, so this prefers it when
+; present and falls back to eval! when not -- correct at the prompt on any
+; engine, correct under frames on one that carries it.
+;
+; THE FALLBACK IS EXPLICIT ON PURPOSE.  prim-ref answers () for a member
+; that is not there, so calling the result blind binds nothing and reports
+; nothing; that cost two long hunts already.  See x-lang#527.
+(def %dg-prim (prim-ref (lit base) (lit def-global)))
 (def %def-global
-  (fn (_ n v) (eval! (list (lit def) n (list (lit lit) v)))))
+  (if (null? %dg-prim)
+    (fn (_ n v) (eval! (list (lit def) n (list (lit lit) v))))
+    (fn (_ n v) (%dg-prim n v))))
 (def define
   (op (name-or-form . body)
     e
