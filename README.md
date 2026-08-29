@@ -16,7 +16,7 @@ $ x -l r5rs
 
 ## Status
 
-**625 of 663 specs green** against x-lang **v0.6.0** and an x-engine-c carrying
+**625 of 663 specs green** against x-lang **v0.7.0** and an x-engine-c carrying
 the [#527](https://github.com/jonruttan/x-lang/issues/527) fix.
 
 Third of the five 2024-era langs to come back, after [x-krn](../x-krn)
