@@ -105,10 +105,17 @@
 ; caller and here and every definition landed nowhere, silently.  It is why
 ; x-r7rs cannot load its own `guard` (x-lang#527).
 ;
-; (base def-global) takes the global path unconditionally, so this is now
-; frame-independent -- correct at the prompt, inside a guarded body, and under
-; any number of wrappers.
-(def %def-global (prim-ref (lit base) (lit def-global)))
+; eval! IS THE ANSWER, and it was there all along.  It evaluates with no env
+; save/restore, so a `def` inside it persists in the caller's world whatever the
+; frame depth -- no tail-position accident, no TCO dependency.
+;
+; This file briefly called (prim-ref (lit base) (lit def-global)), a primitive
+; proposed on x-lang#527 and never shipped: engine v0.1.2 answers () for it, so
+; every `define` called nil and bound nothing.  663 of 663 specs failed on
+; unbound symbols, with no diagnostic pointing anywhere near here.  A prim-ref
+; miss is indistinguishable from a legitimate nil until it is far away.
+(def %def-global
+  (fn (_ n v) (eval! (list (lit def) n v))))
 (def define
   (op (name-or-form . body)
     e
