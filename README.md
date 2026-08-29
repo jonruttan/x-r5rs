@@ -174,11 +174,18 @@ rather than where a float happens to look round.
 Three were the **suite's** fault, and were corrected against the standard
 rather than against our output — the distinction the paragraph below turns on:
 
-| | was | is | rule |
+| | was | is | why |
 |---|---|---|---|
 | `(number->string (exact->inexact 3))` | `3` | `3.0` | 6.2.6 — it must read back with the same exactness |
-| `(log (exp 1))` | `1` | `1.0` | `(exp 1)` is inexact, so the result is |
+| `(log (exp 1))` | `1` | an inverse check | it was asserting a float's printed form, not a fact about logarithms |
 | `(+ 1/2 1.5)` | `2` | `2.0` | 6.2.2 — exactness is contagious |
+
+The third is not an exactness correction at all. `(log (exp 1))` was asserting
+the printed form of a float, which is a question about the printer rather than
+about logarithms, and which a change in rounding could break while both
+functions stayed perfectly correct. It asks what it was always for now — that
+`log` and `exp` undo each other, to within the error floating point is entitled
+to. Checked non-vacuous by running it at zero tolerance, where it fails.
 
 **No expectation was edited to agree with behaviour.** Each of those three
 contradicted R5RS on the day it was written, and each carries its citation in

@@ -330,19 +330,23 @@
 ---
     1
 
-### log of e
+### log and exp are inverses
 
-`(exp 1)` is e, which is irrational and therefore inexact however exact the
-argument was.  An inexact argument cannot yield a provably exact result, so the
-answer is inexact here whatever the digits come to.  Contrast `(log 1)` and
-`(exp 0)` above, which ARE exact: their arguments are exact and their values
-are exact by definition rather than by rounding.
+What this is actually for.  It asked for `(log (exp 1))` to be `1` and then
+`1.0`, and both were assertions about the PRINTED FORM of a float -- which is
+a question about the printer, not about logarithms, and which a change in
+rounding could break while log and exp stayed perfectly correct.
+
+`(exp 1)` is e, irrational and therefore inexact however exact the argument
+was, so the round trip cannot be exact and there is no digit string worth
+pinning.  What is worth asserting is that the two functions undo each other, to
+within the error floating point is entitled to.
 
 ```scheme
-(display (log (exp 1)))
+(< (abs (- (log (exp 1)) 1)) 0.000001)
 ```
 ---
-    1.0
+    #t
 
 ### atan with one arg
 
