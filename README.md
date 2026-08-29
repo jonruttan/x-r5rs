@@ -158,6 +158,39 @@ been edited to match.** A suite rewritten to agree with current behaviour stops
 being evidence, which is the whole reason this generation of personalities was
 worth resurrecting rather than replacing.
 
+
+## A known hygiene defect: macro-introduced definitions leak
+
+`scm/macro.scm` lets a definition produced by a macro escape into the global
+environment. R5RS says it must not — the suite tests exactly this and names it
+pitfall 3.2 — and both the `define-syntax` and `let-syntax` paths leak:
+
+```scheme
+(define-syntax dsfoo (syntax-rules () ((_ var) (define var 777))))
+(let ((y 2)) (dsfoo y) y)   ; => 2, correctly
+y                           ; => 777, and it should be unbound
+```
+
+**It has always leaked. It only became visible when `define` stopped depending
+on frame depth.** Before that the binding was made and then silently discarded
+when the expansion's frame unwound, so the suite passed by accident.
+
+What it costs today is one test, sixty lines further down the same file:
+`(define-syntax make-adder … (lambda (x) (+ x n)))` expands, its `x` resolves to
+a leaked global `x = 1` from the pitfall-3.2 case above, and `(add5 10)` answers
+`6` instead of `15`. That is the whole of the difference between this bundle's
+count on an engine with the [#527](https://github.com/jonruttan/x-lang/issues/527)
+fix and one without.
+
+Two fixes were tried and neither worked: evaluating the expansion in the
+use-site environment with `(eval expr env)` rather than `eval!`, and putting the
+expansion through the same body-position rewrite `lambda` uses. Both were
+measured neutral, which says the expansion is not routed through the
+`define-syntax`/`let-syntax` sites they patch. Finding the real route is the
+next step, and it belongs with the rest of the `syntax-rules` work — the
+ellipsis group is 10 of the remaining failures and is blocked on
+[#158](https://github.com/jonruttan/x-lang/issues/158) anyway.
+
 ## Licence
 
 MIT No Attribution (MIT-0). See [LICENSE](LICENSE).
