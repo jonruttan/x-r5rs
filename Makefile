@@ -59,8 +59,15 @@ test: ## Run the spec suite (every failure is loud)
 	X="$(X)" sh tests/spec-runner.sh
 
 .PHONY: check
-check: ## Run the suite against tests/contract/known-failures.txt -- what CI gates on
+check: check-release-refs ## Run the suite against tests/contract/known-failures.txt -- what CI gates on
 	X="$(X)" sh tests/spec-gate.sh
+
+# Seconds, and no platform needed: it reads lang.xon and greps the tree.  It
+# rides `check` rather than a tier of its own because the thing it catches --
+# a README naming a release nobody tested -- ships silently otherwise.
+.PHONY: check-release-refs
+check-release-refs: ## Assert the declared x-lang release is named in one place
+	sh tools/check/release-refs.sh
 
 .PHONY: bundle
 bundle: ## Roll a release tarball and print its pin
