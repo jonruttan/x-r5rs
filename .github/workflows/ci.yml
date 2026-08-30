@@ -105,7 +105,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: The declared release is named once
+      # THE KIT SHIPS WITH THE PLATFORM, so this job needs x-lang present --
+      # a shallow checkout of the release lang.xon declares, not a build.  The
+      # check itself reads lang.xon and greps the tree; it wants the FILE, not
+      # an engine, which is why X_LANG_KIT points straight at the kit rather
+      # than going through `x --share-dir`.
+      - name: Check out the lang kit
+        run: |
+          declared=$(sed -n 's/^(requires-release "\(.*\)")$/\1/p' lang.xon)
+          git clone --depth 1 --branch "$declared" \
+            https://github.com/jonruttan/x-lang.git .x-lang
+
+      - name: The declared versions are named once
+        env:
+          X_LANG_KIT: ${{ github.workspace }}/.x-lang/tools/lang-kit
         run: sh tools/check/release-refs.sh
 
       - name: No path literals outside run.x
