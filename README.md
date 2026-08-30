@@ -16,7 +16,7 @@ $ x -l r5rs
 
 ## Status
 
-**658 of 667 specs green** against x-lang **v0.7.0**.
+**658 of 667 specs green** against x-lang **v0.8.0**.
 
 Third of the five 2024-era langs to come back, after [x-krn](../x-krn)
 and [x-sweet](../x-sweet), and by far the largest — 667 tests across 26 spec
