@@ -105,7 +105,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: The declared release is named once
+      # THE KIT SHIPS WITH THE PLATFORM, so this job needs x-lang present --
+      # a shallow checkout of the release lang.xon declares, not a build.  The
+      # check itself reads lang.xon and greps the tree; it wants the FILE, not
+      # an engine, which is why X_LANG_KIT points straight at the kit rather
+      # than going through `x --share-dir`.
+      - name: Check out the lang kit
+        run: |
+          declared=$(sed -n 's/^(requires-release "\(.*\)")$/\1/p' lang.xon)
+          git clone --depth 1 --branch "$declared" \
+            https://github.com/jonruttan/x-lang.git .x-lang
+
+      - name: The declared versions are named once
+        env:
+          X_LANG_KIT: ${{ github.workspace }}/.x-lang/tools/lang-kit
         run: sh tools/check/release-refs.sh
 
       - name: No path literals outside run.x
@@ -113,7 +126,14 @@ jobs:
           # Match the entry however grep spells its path (./run.x or run.x),
           # and ignore COMMENTS -- a file may legitimately quote the literal it
           # no longer uses, which is exactly what a port's notes do.
-          hits=$(grep -rn '(include "[a-zA-Z]' --include='*.x' . \
+          # EXCLUDE THE PLATFORM CLONE.  The lang-kit step above clones x-lang
+          # into .x-lang in this same job, and x-lang's own boot files use
+          # root-relative includes legitimately -- lib/x.x reaches
+          # lib/x/boot/helium.x that way.  This gate asks whether THIS BUNDLE
+          # is relocatable; a vendored copy of the platform is not the bundle,
+          # and scanning it fails the check on someone else's correct code.
+          hits=$(grep -rn '(include "[a-zA-Z]' --include='*.x' \
+                 --exclude-dir='.x-lang' . \
                  | grep -Ev ':[0-9]+:[[:space:]]*;' || true)
           if [ -n "$hits" ]; then
             echo "root-relative include (a bundle needs none, not even in run.x):" >&2
