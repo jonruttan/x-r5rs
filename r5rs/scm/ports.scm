@@ -38,6 +38,35 @@
 ; The fourth slot is a one-element box holding either '%unread or the list of
 ; forms still to be handed out by `read`.  It is what makes repeated reads on
 ; one port return successive data rather than re-parsing from the top.
+; --- Sources -------------------------------------------------------------
+;
+; The third slot is a SOURCE, not necessarily a descriptor.  An integer is an
+; fd; a %strsrc is a string with a cursor, which is what R7RS string ports
+; (x-r7rs, scm/ports.scm) are built from.  Everything that reads goes through
+; %src-getc, so a string port is the same port to every caller and nothing
+; downstream -- read-char, read, the slurp -- learns there are two kinds.
+;
+; Kept HERE rather than in the R7RS bundle because the representation is this
+; file's: a constructor over there could not teach read-char about a source it
+; had never heard of without shadowing read-char, and shadowing the reader to
+; add a constructor is the wrong way round.
+(define (%strsrc str) (list '%strsrc str (list 0)))
+(define (%strsrc? x) (and (pair? x) (eq? (car x) '%strsrc)))
+
+; -1 at exhaustion, matching (File getc): the two returns are already
+; distinguishable by type, and every caller here tests char? rather than
+; comparing against the sentinel.
+(define (%src-getc src)
+  (if (%strsrc? src)
+    (let ((str (car (cdr src)))
+          (box (car (cdr (cdr src)))))
+      (let ((i (car box)))
+        (if (>= i (string-length str))
+          -1
+          (do (set-car! box (+ i 1))
+              (string-ref str i)))))
+    (File getc src)))
+
 (define (%make-port dir fd) (list '%port dir fd (list '%unread)))
 (define (%port? p) (and (pair? p) (eq? (car p) '%port)))
 (define (%port-dir p) (car (cdr p)))
@@ -80,7 +109,7 @@
 ; error, and the two returns are already distinguishable by type.
 (define (read-char . rest)
   (let ((p (if (null? rest) (current-input-port) (car rest))))
-    (let ((c (File getc (%port-fd p))))
+    (let ((c (%src-getc (%port-fd p))))
       (if (char? c) c %eof-object))))
 
 ; `read` parses the WHOLE remaining port on first use and hands the forms out
@@ -94,7 +123,7 @@
 (define %token-read-string (prim-ref 'tok 'read-str))
 
 (define (%port-slurp-chars p acc)
-  (let ((c (File getc (%port-fd p))))
+  (let ((c (%src-getc (%port-fd p))))
     (if (char? c)
       (%port-slurp-chars p (cons c acc))
       (reverse acc))))
@@ -140,11 +169,26 @@
 (define %out-fd (list 1))
 (define %tr-fd (list #f))
 
+; A destination is either a descriptor or a %strsink -- an accumulating box,
+; the mirror image of the %strsrc a string input port reads from.  Keeping the
+; polymorphism here, in the one place that turns a string into bytes, is what
+; lets a string output port reuse the platform's renderers instead of
+; reimplementing them: redirect %out-fd at a sink and display already works.
+(define (%strsink) (list '%strsink (list "")))
+(define (%strsink? x) (and (pair? x) (eq? (car x) '%strsink)))
+(define (%strsink-str s) (car (car (cdr s))))
+
+(define (%sink-put! dst s)
+  (if (%strsink? dst)
+    (let ((box (car (cdr dst))))
+      (set-car! box (string-append (car box) s)))
+    (File write dst s (string-length s))))
+
 (define (%emit-str s)
   (do
-    (File write (car %out-fd) s (string-length s))
+    (%sink-put! (car %out-fd) s)
     (if (car %tr-fd)
-      (File write (car %tr-fd) s (string-length s))
+      (%sink-put! (car %tr-fd) s)
       '())))
 
 ; Installed lazily and removed again, so an ordinary program's output takes
