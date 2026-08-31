@@ -1,3 +1,5 @@
+# @weight 4
+
 ## complete c*r compositions (3-letter)
 
 ### cadar

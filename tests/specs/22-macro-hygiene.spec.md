@@ -1,3 +1,5 @@
+# @weight 4
+
 Kept out of `16-syntax-rules.spec.md` deliberately: the ellipsis group in that
 file crashes the interpreter (x-lang#158), which kills the rest of the batch, so
 anything appended after it never runs. These are the regression cover for the

@@ -1,3 +1,5 @@
+# @weight 4
+
 ## identity
 
 ### returns its argument

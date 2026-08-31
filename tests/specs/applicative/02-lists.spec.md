@@ -1,3 +1,5 @@
+# @weight 9
+
 # List stress tests
 
 ## map stress

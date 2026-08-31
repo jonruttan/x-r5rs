@@ -1,3 +1,5 @@
+# @weight 4
+
 # Math stress tests
 
 ## expt stress

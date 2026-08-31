@@ -1,3 +1,5 @@
+# @weight 4
+
 # Port System (R5RS §6.6)
 
 ## port predicates

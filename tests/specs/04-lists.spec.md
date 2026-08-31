@@ -1,3 +1,5 @@
+# @weight 4
+
 ## cons / car / cdr
 
 ### cons creates dotted pair
