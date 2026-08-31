@@ -22,7 +22,7 @@ below is the one this lang cannot claim. The terms are in x-lang's
 
 ## Status
 
-**667 specs, all green** against x-lang **v0.8.1**.
+**667 specs, all green** against x-lang **v0.9.0**.
 
 Third of the five 2024-era langs to come back, after [x-krn](https://github.com/jonruttan/x-krn)
 and [x-sweet](https://github.com/jonruttan/x-sweet), and by far the largest — 667 tests across 27 spec
@@ -301,7 +301,7 @@ analyser scored it on sight — true of `(` and `)`, which really are always
 single-character tokens, and false of `.`, which separates a pair only when
 nothing follows it.
 
-x-engine-c v0.1.4, shipped in x-lang v0.8.1, stopped claiming the character.
+x-engine-c v0.1.4, shipped in x-lang v0.8.1, stopped claiming the character. <!-- release-ref: history: when the fix landed, not the pairing -->
 Nothing about `...` was added anywhere: it is a symbol the reader does not
 recognise and passes through. 667/9 became 667/0 without a line changing under
 `r5rs/`, which is the outcome the lang-owned-tokenizer route
