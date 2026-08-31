@@ -1,3 +1,5 @@
+# @weight 4
+
 ## define
 
 ### defines a variable

@@ -1,3 +1,5 @@
+# @weight 4
+
 ## character basics
 
 ### char? on char

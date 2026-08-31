@@ -1,3 +1,5 @@
+# @weight 6
+
 # R5RS Compliance
 
 ## equivalence predicates

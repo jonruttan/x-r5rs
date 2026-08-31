@@ -89,7 +89,31 @@ jobs:
       # compares the failing test NAMES against
       # tests/contract/known-failures.txt and is red when they differ in
       # EITHER direction -- a new failure, or a recorded one that now passes.
+      # SPEC_BATCH=1 BECAUSE A HOSTED RUNNER IS A MEMORY-CONSTRAINED BOX, which
+      # is exactly the case the runner's own comment says to lower it for.
+      #
+      # The runner buckets up to SPEC_BATCH (default 8) spec files into ONE
+      # process, and there is no auto-GC during a batch -- a bucket accumulates
+      # every file's parse-time and per-snippet garbage until the process
+      # exits.  That is fine on a 32 GB dev box and is not fine here: a
+      # standard hosted runner has 16 GB, and x-lang's runaway ceiling is 650M
+      # objects (~31 GB), so the guard cannot trip before the machine does.
+      # The suite was killed by SIGTERM partway through, at 56s, 60s and 95s
+      # across three runs -- varying, because it is memory and not a timeout.
+      #
+      # LOWERING THE CEILING INSTEAD WOULD NOT WORK.  It is not a margin these
+      # bundles sit under: x-r5rs needs somewhere between 300M and 325M objects
+      # resident to finish at all, and arming the guard below that reproduces
+      # the batch deaths it exists to report (300M: 667/34).  The memory has to
+      # go down, not the limit.
+      #
+      # So: one file per process, which is the pre-bucketing behaviour exactly.
+      # It costs a tower boot per spec file and buys a peak this runner can
+      # hold.  PARALLEL_JOBS is left alone -- single-file processes are small
+      # enough that the CPU-count default is not the binding constraint.
       - name: Run the R5RS specs
+        env:
+          SPEC_BATCH: 1
         run: X="$PWD/.x-lang/x.sh" sh tests/spec-gate.sh
 
   relocatable:

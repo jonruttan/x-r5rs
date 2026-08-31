@@ -36,4 +36,5 @@
 # list reader now recognises the one-character symbol "." where it already
 # decides pair-versus-list.  Nothing in this bundle changed.
 #
-# x-lang v0.8.1 is the release carrying it.
+# x-lang v0.8.1 is the release carrying it.  (release-ref: history -- the
+# release the engine fix landed in, not this bundle's pairing.)

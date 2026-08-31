@@ -1,3 +1,5 @@
+# @weight 4
+
 # Closure and higher-order stress tests
 
 ## closure stress

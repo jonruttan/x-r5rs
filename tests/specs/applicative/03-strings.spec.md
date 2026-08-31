@@ -1,3 +1,5 @@
+# @weight 5
+
 # String stress tests
 
 ## string-append stress

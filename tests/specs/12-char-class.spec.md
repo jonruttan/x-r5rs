@@ -1,3 +1,5 @@
+# @weight 4
+
 # Character Classification and Case
 
 ## char-alphabetic?

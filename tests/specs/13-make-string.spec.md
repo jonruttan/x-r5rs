@@ -1,3 +1,5 @@
+# @weight 4
+
 # make-string and number conversions
 
 ## make-string

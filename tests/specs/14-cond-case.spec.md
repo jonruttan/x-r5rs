@@ -1,3 +1,5 @@
+# @weight 4
+
 # cond and case enhancements
 
 ## cond => syntax

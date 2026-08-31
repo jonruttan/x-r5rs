@@ -38,10 +38,18 @@
 ;
 ; v0.6.0 was the first release carrying what this bundle needs: bundle
 ; acquisition, `-l` loading, --share-dir answering from any cwd, and eval! in
-; the seam.  v0.7.0 is what these specs are green against, and this row tracks
-; THAT rather than the floor -- the question it answers is "what was this built
-; against", not "what is the oldest that would still work".
+; the seam.  This row tracks what these specs are green AGAINST rather than the
+; floor -- the question it answers is "what was this built against", not "what
+; is the oldest that would still work".
+;
+; v0.9.0 CARRIES THE DECIMAL TOWER, and pairing with it took a change in the
+; SUITE rather than in this bundle.  x/num/decimal adds ~50M objects a load, and
+; the runner buckets up to SPEC_BATCH files into one process with no collection
+; between them -- so a bucket crossed the runaway ceiling and batches died
+; (667/34) without a line here being wrong.  CI runs SPEC_BATCH=1, one file per
+; process, and the suite is 667/0 against v0.9.0's ceiling.  Measured, not
+; assumed: forced to the same 300M limit at SPEC_BATCH=1, this suite is green.
 
-(requires-release "v0.8.1")
+(requires-release "v0.9.0")
 
 (entry "run.x")

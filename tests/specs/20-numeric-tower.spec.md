@@ -1,3 +1,5 @@
+# @weight 4
+
 # R5RS Numeric Tower
 
 ## rational arithmetic

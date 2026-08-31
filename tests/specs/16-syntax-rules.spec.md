@@ -1,3 +1,5 @@
+# @weight 4
+
 ## define-syntax
 
 ### defines a simple macro
