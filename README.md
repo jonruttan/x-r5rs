@@ -14,18 +14,24 @@ $ x -l r5rs
 (b 2)
 ```
 
+x-r5rs is a **lang**: a different surface language loaded over an x-lang
+dialect, free to re-mean shared spellings — which is why `do` below is a
+problem worth a section. The terms are in x-lang's
+[lang contract](https://github.com/jonruttan/x-lang/blob/main/docs/lang-contract.md).
+
 ## Status
 
-**658 of 667 specs green** against x-lang **v0.8.1**.
+**667 specs, all green** against x-lang **v0.8.1**.
 
-Third of the five 2024-era langs to come back, after [x-krn](../x-krn)
-and [x-sweet](../x-sweet), and by far the largest — 667 tests across 26 spec
-files against roughly 1,700 lines of Scheme.
+Third of the five 2024-era langs to come back, after [x-krn](https://github.com/jonruttan/x-krn)
+and [x-sweet](https://github.com/jonruttan/x-sweet), and by far the largest — 667 tests across 27 spec
+files against roughly 1,500 lines of Scheme and 680 of x.
 
-The 9 that do not pass are all one thing: the reader takes every token
-beginning with `.` as the pair-dot, so `...` is unreadable and `syntax-rules`
-patterns cannot be written. That is a design question in the engine's
-tokenizer rather than a patch — see below.
+[`tests/contract/known-failures.txt`](tests/contract/known-failures.txt) is
+**empty**, and stays in the tree saying so. `make check` is red the moment any
+spec fails, with no line there to excuse it — an empty contract is a stronger
+claim than a missing one. What used to be listed was the ellipsis group, and
+it went without a line changing under `r5rs/`; see below.
 
 **Ports work now** (R5RS §6.6), which is the 21 that used to head this table.
 `scm/ports.scm` was 249 lines of hand-rolled FFI — `dlopen`/`ptr-call` against
@@ -43,33 +49,164 @@ swap that instead of re-implementing every renderer the verbs reach.
 The bundle stays on `(dialect xe)`. The old note predicted that restoring ports
 would force it to radon, and that was true of the `dlopen` version — but a
 dialect decides what is *preloaded*, not what is *reachable*, so an explicit
-`(import x/sys/file)` is enough. Measured both ways with ports loaded: 667/16
-under `xe`, 667/16 under `rn`.
+`(import x/sys/file)` is enough. Measured both ways rather than reasoned about,
+with ports loaded in each: the suite scores identically under `xe` and under
+`rn`, so nothing here asks for the heavier dialect.
+
+## Install
+
+Nothing cloned, from any directory:
+
+```bash
+x --install-lang https://github.com/jonruttan/x-r5rs/releases/latest/download/lang.pin.xon
+x -l r5rs
+```
+
+x fetches the published pin, then the tarball it names, verifies the digest,
+and installs to `<share>/langs/r5rs` — where `x -l` looks. A failed upgrade
+leaves the working install untouched.
+
+From a clone, if you have one:
+
+```bash
+make install                      # into the x on your PATH
+PREFIX=$HOME/.local make install  # or a particular prefix
+```
+
+`make uninstall` removes it either way. An installed x searches
+`<share>/langs/*/lang.xon`, so a lang is installed when its files are there —
+no registry, no database.
+
+**One trap, and it is the one you will hit.** `x` decides where to look for
+langs from the directory you run it *in*. Inside an **x-lang checkout** it
+searches `deps/langs/` and an installed lang is invisible, however correctly it
+was installed:
+
+```
+$ cd path/to/x-lang && x -l r5rs
+Error: no library, app or lang named 'r5rs'
+  searched lib/r5rs.x, apps/r5rs/run.x
+      and deps/langs/*/lang.xon
+```
+
+Run it from anywhere else, or name the bundles explicitly — `X_LANG_DIR` wins
+in both modes:
+
+```bash
+X_LANG_DIR=$HOME/.local/share/x/langs/ x -l r5rs   # the installed one
+X_LANG_DIR=/path/to/x-r5rs/.. x -l r5rs            # a checkout, uninstalled
+```
+
+
+## Pin it instead, for a project
+
+An install is unversioned and machine-wide. When it matters *which* version a
+project builds against, pin it: `Pin bundle` fetches the release tarball and
+verifies it against a digest before unpacking. In the project's
+`lang.pin.xon`:
+
+```x
+(lang "r5rs")
+(release "v0.2.2")
+(bundle "sha256:…" "https://github.com/jonruttan/x-r5rs/releases/download/v0.2.2/x-r5rs-v0.2.2.tar.gz")
+(source "https://github.com/jonruttan/x-r5rs.git")
+```
+
+Each release publishes its own digest, and the release notes carry this block
+ready to paste. Then:
+
+```x-repl
+> (import x/tool/pin)
+> (Pin bundle "deps/langs")
+"deps/langs/r5rs-v0.2.2"
+```
+
+`deps/langs/` is where `x -l` looks in a checkout, beside the engine and
+anything else fetched rather than built. `X_LANG_DIR` overrides it.
+
+**Which to use.** Install when you just want `x -l r5rs` to work. Pin when a
+build depends on it — the digest is what makes the version reproducible, and
+an install has none.
+
+**x-r7rs consumes this bundle**, and by an exact version: its `lang.xon` carries
+`(requires-lang "r5rs" …)`, compared for equality and never parsed. A checkout
+does not satisfy that row — only an install or an unpacked release tarball
+carries the stamped `version` file it compares against.
+
+That stamp is `git describe`, so **installing from a checkout that is not
+exactly on the tag will not satisfy a dependent**. One commit past v0.2.2 with
+an edited file installs as `v0.2.2-1-gabc1234-dirty`, which is not `v0.2.2`,
+and x-r7rs refuses it by name. That is the mechanism working — the row asks
+*which* x-r5rs, and a modified working tree is not the one that was tested.
+`--allow-lang-skew` is the way through while working on both at once.
 
 ## Running it
 
 ```bash
-make test        # the spec suite
-make install     # into the x on PATH
+x -l r5rs                  # interactive
+x -l r5rs -f program.scm   # batch
 ```
 
-then `x -l r5rs`. `make install` puts the bundle where `-l` looks — an installed
-x searches `<share>/langs/*/lang.xon`, so a lang is installed when its files
-are there. No registry, no per-project pin. Use `lang.pin.xon` and `Pin bundle`
-instead when it matters which version.
+x-lang boots the dialect `lang.xon` declares, arms this bundle's module root,
+and loads `run.x` on top — which is why nothing here needs to know a path.
+
+## Development
+
+Run the specs against any x-lang checkout or install:
+
+```bash
+X=/path/to/x-lang/x.sh make test    # the suite -- every failure is loud
+X=/path/to/x-lang/x.sh make check   # the suite against the contract, which CI gates on
+make check-release-refs             # the declared x-lang release is named in one place
+make bundle                         # roll a release tarball and print its pin
+```
+
+**Pass `X` explicitly.** Without it the suite takes the `x` on your PATH, and an
+installed x that trails the checkout reports failures the platform has already
+fixed — which is exactly how the nine ellipsis specs appeared to survive the
+release that removed them.
+
+**Do not `make install` into an x-lang checkout.** The Makefile asks
+`$(X) --share-dir` where to put the bundle, and a checkout answers with its own
+root — so the files land in `<checkout>/langs/NAME`, which is not one of the
+three paths `-l` searches there. It reports success and the lang stays
+invisible. Install into a real `<share>` tree, or use `X_LANG_DIR`.
+
+
+`make check-release-refs` is the gate that keeps this file honest: every x-lang
+version named here is a *copy* of the one row in `lang.xon`, and a copy nobody
+checks goes stale at the next release. CI runs the declared release *and*
+x-lang `main`, so a platform that moves underneath this bundle shows up as a
+red build rather than a surprise later.
+
+The release tarball is byte-reproducible: it is built from the tag with
+`git archive` and a timestamp-free gzip, so two people rolling one tag get one
+digest. Pushing a `v*` tag runs the suite and, only if it is green, publishes
+the tarball, its `.sha256` and `lang.pin.xon` as a GitHub release.
 
 ## Layout
 
 ```
-lang.xon     name, dialect, release pairing
-run.x               THE entry -- the only file that may know a path
-r5rs/aliases.x      Scheme's names in x's current spellings -- where the rot was
-r5rs/prims.x        the raw type layer, under its 2024 names
-r5rs/printer.x      Scheme's `write`, which is not x's
-r5rs/base.x         assembles the parts
-r5rs/scm/*.scm      the library, in Scheme
-scripts/            2024 harnesses, superseded by tests/ -- kept, not wired up
+lang.xon               what this bundle is: name, dialect, release pairing
+run.x                  the entry
+r5rs/aliases.x         Scheme's names in x's current spellings -- where the rot was
+r5rs/prims.x           the raw type layer, under its 2024 names
+r5rs/printer.x         Scheme's `write`, which is not x's
+r5rs/base.x            assembles the parts
+r5rs/scm/*.scm         the library, in Scheme
+tests/spec-runner.sh   sources the platform's shared runner
+tests/specs/*.spec.md  the suite, as literate markdown
+tests/contract/        the recorded debt CI gates on -- empty, and saying so
+tools/bundle.sh        rolls a release tarball and prints its pin
+tools/check/           the release-refs gate, sourced from x-lang's lang kit
+scripts/               2024 harnesses, superseded by tests/ -- kept, not wired up
+Makefile               install / uninstall / test / check / bundle
 ```
+
+No file here carries a path literal, `run.x` included — x.sh boots the dialect
+`lang.xon` declares and arms this root *before* `run.x` is read, so nothing
+needs one. CI enforces it, and it is stricter than the lang contract requires:
+the contract exempts an app entry, and a bundle has no claim to that exemption.
 
 ## What porting it actually cost
 
@@ -143,26 +280,29 @@ quote/quasiquote/comma reader types built with `compile-batch`. The platform
 ships `lib/x/reader/lit-reader.x` and `quasi-reader.x` now, and `'` and `` ` ``
 work out of the box. Porting it would have been re-implementing the platform.
 
-## What remains, and what was fixed
+## What was fixed
 
-**Ellipsis (9).** Every token beginning with `.` reaches x-lang as the dot
-sentinel, so `(a ... b)` reads as `('a . #<ATOM:…>)` — an improper list holding
-a leaked C satom, which segfaults on `(first (rest …))`. `syntax-rules` cannot
-be written until a lone `.` is distinguishable from a token that merely starts
-with one.
+**Ellipsis (9) — gone, and the bundle did not move.** `syntax-rules` patterns
+could not be written at all: every token *beginning* with `.` reached x-lang as
+the pair-dot sentinel, so `(a ... b)` read as `('a . #<ATOM:…>)` — an improper
+list holding a leaked C satom, which segfaulted on `(first (rest …))`.
 
-It is not obviously the engine's job to fix. **x is not Scheme**, and Scheme's
-lexical rules — that `a.b` is a symbol, that `...` is a symbol — are the
-lang's to impose, above the engine, not the engine's to adopt. What is
-arguably the engine's own defect is narrower: its internal pair-dot marker
-escapes into data as a value and crashes on access, which is wrong in x's terms
-whatever a dot is supposed to mean.
+The contract recorded it as "not a patch waiting to be applied", on the reading
+that **x is not Scheme**: Scheme's lexical rules — that `a.b` is a symbol, that
+`...` is a symbol — are a lang's to impose above the engine, not the engine's
+to adopt. That reading held. What it missed is that the engine was not failing
+to support Scheme; it was asserting a rule of *its own* that it never meant to
+make. The dot sat in `X_SEXP_LIST_CHARS_STR` beside the brackets, so the
+analyser scored it on sight — true of `(` and `)`, which really are always
+single-character tokens, and false of `.`, which separates a pair only when
+nothing follows it.
 
-The route that does not ask the engine to become Scheme is a lang-owned
-tokenizer base — `(Base make-tok)`, which is what x-ash uses for shell syntax
-and what that primitive is documented for. It is a real lift for a lang that
-otherwise wants x's s-expression reader, and it has not been attempted here.
-Background on [x-lang#158](https://github.com/jonruttan/x-lang/issues/158).
+x-engine-c v0.1.4, shipped in x-lang v0.8.1, stopped claiming the character.
+Nothing about `...` was added anywhere: it is a symbol the reader does not
+recognise and passes through. 667/9 became 667/0 without a line changing under
+`r5rs/`, which is the outcome the lang-owned-tokenizer route
+([x-lang#158](https://github.com/jonruttan/x-lang/issues/158)) would have cost
+a rewrite to reach.
 
 **Exactness — fixed, and it split two ways.** Four were the implementation's
 fault: R5RS 6.2.5 permits an exact result where the argument is exact and the
