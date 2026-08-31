@@ -15,8 +15,9 @@ $ x -l r5rs
 ```
 
 x-r5rs is a **lang**: a different surface language loaded over an x-lang
-dialect, free to re-mean shared spellings — which is why `do` below is a
-problem worth a section. The terms are in x-lang's
+dialect. Where x-lang and Scheme spell something the same way, Scheme is free
+to mean something different by it — `lambda` is one such spelling, and `do`
+below is the one this lang cannot claim. The terms are in x-lang's
 [lang contract](https://github.com/jonruttan/x-lang/blob/main/docs/lang-contract.md).
 
 ## Status
@@ -235,7 +236,8 @@ These type-check either way often enough that you find them as a wrong answer
 rather than an error. ([x-lang#66](https://github.com/jonruttan/x-lang/issues/66)
 tracks the convention.)
 
-**`do` cannot be re-meant, and that is a hole in the contract.** R5RS `do` is
+**`do` is the one spelling this lang cannot claim, and that is a hole in the
+contract.** R5RS `do` is
 the iteration form; x's `do` is its sequencer, and the platform library
 resolves it *by name at run time* from 275 call sites. Rebind the global and
 the platform breaks underneath you — `(def do 5)` makes the next `write` raise
@@ -245,8 +247,10 @@ shape nothing in x shares (first argument a list of binding *lists*), and
 everything else is handed back to the platform's operative, captured as
 `%r5rs-seq` before the shadow goes up. Filed as
 [x-lang#525](https://github.com/jonruttan/x-lang/issues/525), because the
-contract's central promise is that a lang may re-mean a shared spelling,
-and this is a spelling where it cannot.
+contract's central promise is that a lang may mean something of its own by a
+shared spelling, and this is a spelling where it cannot — not because two
+meanings may not coexist, but because the platform resolves this one by name
+while the lang is running.
 
 **Interior defines never worked** — the same defect x-krn had, for the same
 reason. `define` is an operative, so its `def` runs in `define`'s own frame; in
