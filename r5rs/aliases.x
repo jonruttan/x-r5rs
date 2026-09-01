@@ -109,11 +109,12 @@
 ; save/restore, so a `def` inside it persists in the caller's world whatever the
 ; frame depth -- no tail-position accident, no TCO dependency.
 ;
-; This file briefly called (prim-ref (lit base) (lit def-global)), a primitive
-; proposed on x-lang#527 and never shipped: engine v0.1.2 answers () for it, so
-; every `define` called nil and bound nothing.  663 of 663 specs failed on
-; unbound symbols, with no diagnostic pointing anywhere near here.  A prim-ref
-; miss is indistinguishable from a legitimate nil until it is far away.
+; This file briefly called (prim-ref (lit base) (lit def-global)) BEFORE the
+; primitive existed (proposed on x-lang#527, absent through engine v0.1.4).
+; An engine that lacks it answers () for the prim-ref, so every `define`
+; called nil and bound nothing.  663 of 663 specs failed on unbound symbols,
+; with no diagnostic pointing anywhere near here.  A prim-ref miss is
+; indistinguishable from a legitimate nil until it is far away.
 ; THE VALUE IS QUOTED, and leaving it bare is a bug that hides for a long time.
 ; (list (lit def) n v) builds (def name <value>) and eval! then EVALUATES it --
 ; so the value is evaluated a second time.  Numbers, strings and procedures
@@ -132,9 +133,10 @@
 ; (define f (lambda (p) p)) ALL bind nothing.
 ;
 ; (base def-global) takes `def`'s top-level path unconditionally and is
-; frame-independent.  It is not in engine v0.1.2, so this prefers it when
-; present and falls back to eval! when not -- correct at the prompt on any
-; engine, correct under frames on one that carries it.
+; frame-independent.  It SHIPPED in engine v0.1.5, and this bundle's pinned
+; platform (x-lang v0.9.0 -> engine v0.1.6) carries it, so the primitive is
+; the LIVE path here; eval! remains the fallback for an older engine --
+; correct at the prompt on any, correct under frames on one that carries it.
 ;
 ; THE FALLBACK IS EXPLICIT ON PURPOSE.  prim-ref answers () for a member
 ; that is not there, so calling the result blind binds nothing and reports
