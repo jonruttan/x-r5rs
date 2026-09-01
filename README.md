@@ -1,7 +1,7 @@
 # x-r5rs — R5RS Scheme on x-lang
 
-The Scheme vocabulary and binding forms, riding on x-lang's evaluator and
-numeric tower.
+The Scheme vocabulary and binding forms, riding on
+[x-lang](https://github.com/jonruttan/x-lang)'s evaluator and numeric tower.
 
 ```
 $ x -l r5rs
@@ -365,6 +365,21 @@ produced into an expression context becomes a plain `def`, which binds in the
 frame the expansion runs in and leaves with it.
 
 Both paths are covered by specs now, and the two engines agree at 37.
+
+## Background
+
+Scheme began with Gerald Jay Sussman and Guy L. Steele Jr. at MIT in 1975 — a
+Lisp with lexical scope, first-class continuations, and proper tail calls as a
+requirement rather than an optimization. R5RS (1998, edited by Kelsey, Clinger
+and Rees) is the revision this bundle implements, and the one most often meant
+by "standard Scheme": famously about fifty pages, on the stated principle that
+a language grows by removing the weaknesses that make features seem necessary,
+not by piling features up. That brevity is why 667 specs can plausibly claim to
+cover a useful core of it.
+
+- [R5RS](https://schemers.org/Documents/Standards/R5RS/) — the report itself
+- [scheme.org](https://www.scheme.org/) — the community hub: implementations, standards, SRFIs
+- [SICP](https://sarabander.github.io/sicp/) — *Structure and Interpretation of Computer Programs*, the book that taught the world this language
 
 ## Licence
 
