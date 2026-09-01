@@ -50,6 +50,6 @@
 ; process, and the suite is 667/0 against v0.9.0's ceiling.  Measured, not
 ; assumed: forced to the same 300M limit at SPEC_BATCH=1, this suite is green.
 
-(requires-release "v0.9.0")
+(requires-release "v0.10.0")
 
 (entry "run.x")
