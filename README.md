@@ -22,7 +22,7 @@ below is the one this lang cannot claim. The terms are in x-lang's
 
 ## Status
 
-**667 specs, all green** against x-lang **v0.9.0**.
+**667 specs, all green** against x-lang **v0.10.0**.
 
 Third of the five 2024-era langs to come back, after [x-krn](https://github.com/jonruttan/x-krn)
 and [x-sweet](https://github.com/jonruttan/x-sweet), and by far the largest — 667 tests across 27 spec
