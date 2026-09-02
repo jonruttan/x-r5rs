@@ -134,7 +134,7 @@
 ;
 ; (base def-global) takes `def`'s top-level path unconditionally and is
 ; frame-independent.  It SHIPPED in engine v0.1.5, and this bundle's pinned
-; platform (x-lang v0.9.0 -> engine v0.1.6) carries it, so the primitive is
+; platform (x-lang v0.10.0 -> engine v0.1.6) carries it, so the primitive is
 ; the LIVE path here; eval! remains the fallback for an older engine --
 ; correct at the prompt on any, correct under frames on one that carries it.
 ;
