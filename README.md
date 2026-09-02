@@ -1,5 +1,7 @@
 # x-r5rs — R5RS Scheme on x-lang
 
+<p align="center"><img src="docs/bitwise-banner.svg" alt="x-r5rs, with Bitwise the owl" width="100%"></p>
+
 The Scheme vocabulary and binding forms, riding on
 [x-lang](https://github.com/jonruttan/x-lang)'s evaluator and numeric tower.
 
@@ -384,3 +386,5 @@ cover a useful core of it.
 ## Licence
 
 MIT No Attribution (MIT-0). See [LICENSE](LICENSE).
+
+<p align="center"><img src="docs/bitwise-mark.svg" alt="Bitwise" width="96"></p>
