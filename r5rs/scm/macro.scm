@@ -321,6 +321,69 @@
 ; that calls it. The op is dynamically scoped so it finds the gensym
 ; in the env at call time.
 
+; BOTH BINDINGS GO THROUGH %def-global, AND THE EXPANSION EVALUATES IN THE USE
+; SITE'S ENV.  Two changes, one cause.
+;
+; THE BINDINGS.  This used to hand a (begin (def ...) (def ...)) to a
+; one-argument `eval` from inside an operative body and rely on the bindings
+; escaping to the caller.  They escaped because `def` chose global-versus-local
+; by SAVE-STACK DEPTH, and an operative in tail position left that stack empty
+; -- the same accident r5rs/aliases.x's `define` note calls "extremely fragile"
+; and stopped relying on.  `define` was converted then; define-syntax was not,
+; and kept the trick.  %def-global takes `def`'s top-level path
+; unconditionally, so it does not care how deep the frame is.
+;
+; THE EXPANSION.  The generated op evaluated its expansion with `eval!`, which
+; does no env save/restore -- so a `def` in the expansion (what
+; %sr-rewrite-clause rewrites a template's `define` INTO, precisely so it stays
+; put) landed wherever the engine judged current.  `(eval <form> %sr-env)` is
+; the shape letrec-syntax already used here, and it keeps the definition inside
+; the expansion where R5RS pitfall 3.2 wants it.
+;
+; WHAT CHANGED UNDERNEATH.  x-engine-c v0.2.8 (#41): a `def` scopes by the LIVE
+; FRAME, not by an empty save stack.  x-lang picked it up in f3698b11, a pin
+; bump and nothing else.  Holding the x-lang source AT f3698b11 and swapping
+; only the engine reproduces the whole split -- v0.2.7 green, v0.2.8 red -- so
+; this is the engine's ruling, not a library change.
+;
+; MEASURED, whole suite, one file per process, booted from source
+; (IMG=0 SPEC_BATCH=1), each row a full run:
+;
+;   platform                        engine   before   after
+;   x-lang v0.10.0 (this pairing)   v0.1.6   667/0    667/0
+;   x-lang main 6c0ab5c5            v0.2.8   667/24   667/2
+;
+; So: no movement on the release this bundle declares, and 24 -> 2 on main.
+;
+; THE 2 THAT REMAIN ARE ONE DEFECT, AND IT IS NOT THIS FORM'S.  let-syntax's
+; expansion still leaks its `def` to the global env under v0.2.8; that leak
+; binds `x` globally in the pitfall-3.2 case, and hygiene then substitutes the
+; leaked VALUE into a later macro, which is the whole of "macro expanding to
+; lambda" answering 6 (= 1 + 5) instead of 15.  Fixing it needs the expansion
+; to evaluate in a frame it cannot escape, and neither shape tried here does
+; it: (eval <form> %sr-env), which is what define-syntax above now uses, breaks
+; let-syntax on BOTH engines (9 failures each), and wrapping the expansion in
+; (let () ...) leaves the pinned engine green but takes main to 32 failures.
+; Neither is a fix and neither is kept.  Note the divergence is narrow: a plain
+; `def` inside an operative called from a `let` still stays local on v0.2.8; it
+; is the eval!-of-an-expansion path alone that now reaches global.
+;
+; NOT RECORDED IN known-failures.txt, and that is deliberate -- see the note
+; there.  One contract serves both CI legs, and these two PASS on the pinned
+; leg, so recording them would turn the pinned leg red while silencing the
+; early warning the main leg exists to give.
+;
+; SPEC_SEAM_COLLECT WAS NOT IT, though the shape invited the guess -- a name
+; defined in one snippet and gone in the next is exactly what the per-seam
+; collect (x-lang#568/#572) does to a bundle whose reader holds C-side state,
+; and the sibling bundles set the knob to 0 for that.  Measured both ways
+; against the same platform, 16-syntax-rules: 32/22 with the collect on, the
+; SAME 32/22 with it off.  It is not this bundle's problem and stays unset.
+; The names also never were cross-snippet: every one of the 22 defines and
+; uses its macro in ONE snippet.
+;
+; letrec-syntax needs no change: it already passed the caller's environment to
+; `eval` explicitly, so it never depended on the depth.
 (define
   define-syntax
   (op (name transformer-expr)
@@ -329,22 +392,21 @@
     (def %ds-xfm-name
       (string->symbol
         (string-append "%xfm-" (symbol->string name))))
-    (eval
-      (list
-        (lit begin)
-        (list (lit def) %ds-xfm-name %ds-xfm)
+    (%def-global %ds-xfm-name %ds-xfm)
+    (%def-global
+      name
+      (eval
         (list
-          (lit def)
-          name
+          (lit op)
+          (lit %sr-args)
+          (lit %sr-env)
           (list
-            (lit op)
-            (lit %sr-args)
-            (lit %sr-env)
+            (lit eval)
             (list
-              (lit eval!)
-              (list
-                %ds-xfm-name
-                (list (lit pair) (list (lit lit) name) (lit %sr-args))))))))))
+              %ds-xfm-name
+              (list (lit pair) (list (lit lit) name) (lit %sr-args)))
+            (lit %sr-env)))
+        e))))
 
 ; let-syntax: local syntax bindings
 ; Processes one binding at a time, wrapping in let + recursing
