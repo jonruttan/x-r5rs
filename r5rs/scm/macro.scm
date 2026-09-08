@@ -440,8 +440,8 @@
 ;
 ;   platform          engine   before   after
 ;   x-lang v0.10.0    v0.1.6   667/0    667/0
-;   x-lang v0.13.0    v0.2.8   667/2    667/0
-;   x-lang main       v0.2.8   667/2    667/0
+;   x-lang v0.13.0    v0.2.8   667/2    667/0   (release-ref: history)
+;   x-lang main       v0.2.8   667/2    667/0   (release-ref: history)
 
 (define
   let-syntax
