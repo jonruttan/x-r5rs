@@ -59,7 +59,7 @@ test: ## Run the spec suite (every failure is loud)
 	X="$(X)" sh tests/spec-runner.sh
 
 .PHONY: check
-check: check-release-refs ## Run the suite against tests/contract/known-failures.txt -- what CI gates on
+check: check-release-refs check-if-ladders ## Run the suite against tests/contract/known-failures.txt -- what CI gates on
 	X="$(X)" sh tests/spec-gate.sh
 
 # Seconds, and no platform needed: it reads lang.xon and greps the tree.  It
@@ -68,6 +68,13 @@ check: check-release-refs ## Run the suite against tests/contract/known-failures
 .PHONY: check-release-refs
 check-release-refs: ## Assert the declared x-lang release is named in one place
 	X="$(X)" sh tools/check/release-refs.sh
+
+# `match` is the primitive for a decision with arms; a nested-if chain is not.
+# It rides `check` for the same reason release-refs does -- the shape it
+# catches is invisible in a diff that only shows the new arm.
+.PHONY: check-if-ladders
+check-if-ladders: ## Assert no new nested-if ladders (tools/contract/if-ladders.txt)
+	X="$(X)" sh tools/check/if-ladders.sh
 
 .PHONY: bundle
 bundle: ## Roll a release tarball and print its pin
