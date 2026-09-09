@@ -161,6 +161,7 @@ Run the specs against any x-lang checkout or install:
 X=/path/to/x-lang/x.sh make test    # the suite -- every failure is loud
 X=/path/to/x-lang/x.sh make check   # the suite against the contract, which CI gates on
 make check-release-refs             # the declared x-lang release is named in one place
+X=/path/to/x-lang/x.sh make check-if-ladders   # no new nested-if ladders
 make bundle                         # roll a release tarball and print its pin
 ```
 
@@ -182,6 +183,19 @@ checks goes stale at the next release. CI runs the declared release *and*
 x-lang `main`, so a platform that moves underneath this bundle shows up as a
 red build rather than a surprise later.
 
+`make check-if-ladders` is the other gate, and it needs an `X`: the checker is
+itself x, because a nested-`if` ladder is a *shape* and only reading the module
+as s-expressions can see one — a grep would count parens. `match` is an engine
+primitive and the flat way to write a decision with more than a couple of arms;
+a chain of `if`s nested through their else branches says the same thing one
+indent deeper per arm. Four arms is the threshold, and
+`tools/contract/if-ladders.txt` is **empty**: the 46 three-armed `if`s in
+`r5rs/*.x` are all chains of one link, because this bundle names Scheme's
+vocabulary and leaves the decisions to `r5rs/scm/*.scm` where `cond` is already
+flat. The check is a ratchet in both directions — a new ladder is red, and so
+is a manifest row that has been outgrown but not lowered, so a fix cannot leave
+the file behind as a record of things that are fine.
+
 The release tarball is byte-reproducible: it is built from the tag with
 `git archive` and a timestamp-free gzip, so two people rolling one tag get one
 digest. Pushing a `v*` tag runs the suite and, only if it is green, publishes
@@ -201,7 +215,9 @@ tests/spec-runner.sh   sources the platform's shared runner
 tests/specs/*.spec.md  the suite, as literate markdown
 tests/contract/        the recorded debt CI gates on -- empty, and saying so
 tools/bundle.sh        rolls a release tarball and prints its pin
-tools/check/           the release-refs gate, sourced from x-lang's lang kit
+tools/check/           the gates: release-refs from x-lang's lang kit, and the
+                       if-ladder linter, which is x because a ladder is a shape
+tools/contract/        the recorded if-ladder debt -- empty, and saying so
 scripts/               2024 harnesses, superseded by tests/ -- kept, not wired up
 Makefile               install / uninstall / test / check / bundle
 ```
