@@ -38,3 +38,28 @@
 #
 # x-lang v0.8.1 is the release carrying it.  (release-ref: history -- the
 # release the engine fix landed in, not this bundle's pairing.)
+
+# --- WHY THE TWO MAIN-ONLY FAILURES ARE NOT LISTED -----------------------
+#
+# As of 2026-09-06 this bundle fails two specs against x-lang MAIN and none
+# against the v0.10.0 it pairs with:
+#
+#   define-syntax with define: macro expanding to lambda
+#   macro-introduced ... (pitfall 3.2, both paths): let-syntax: and leaves
+#     nothing behind
+#
+# Both are the one defect r5rs/scm/macro.scm's define-syntax note describes:
+# x-engine-c v0.2.8 (#41) made `def` scope by the live frame, and let-syntax's
+# expansion now leaks its `def` to global.  x-lang took the pin in f3698b11.
+#
+# THEY STAY OFF THIS LIST BECAUSE ONE CONTRACT SERVES BOTH CI LEGS.  The gate
+# is red in either direction, so a name listed here must fail on EVERY leg
+# that reads the file -- and these two PASS on the pinned leg.  Listing them
+# would turn the pinned leg red (recorded-but-passing) to quiet the main leg,
+# trading the verdict this bundle actually makes for the early warning it was
+# given.  ci.yml already answers this: the main leg is continue-on-error
+# precisely so it can be red without being a verdict.  Let it be red.
+#
+# So this file still claims what it claimed: against the release this bundle
+# DECLARES, there are no known failures.  Measured, whole suite, one file per
+# process, from source: 667/0 on v0.10.0, 667/2 on main.

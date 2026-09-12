@@ -321,6 +321,66 @@
 ; that calls it. The op is dynamically scoped so it finds the gensym
 ; in the env at call time.
 
+; BOTH BINDINGS GO THROUGH %def-global, AND THE EXPANSION EVALUATES IN THE USE
+; SITE'S ENV.  Two changes, one cause.
+;
+; THE BINDINGS.  This used to hand a (begin (def ...) (def ...)) to a
+; one-argument `eval` from inside an operative body and rely on the bindings
+; escaping to the caller.  They escaped because `def` chose global-versus-local
+; by SAVE-STACK DEPTH, and an operative in tail position left that stack empty
+; -- the same accident r5rs/aliases.x's `define` note calls "extremely fragile"
+; and stopped relying on.  `define` was converted then; define-syntax was not,
+; and kept the trick.  %def-global takes `def`'s top-level path
+; unconditionally, so it does not care how deep the frame is.
+;
+; THE EXPANSION.  The generated op evaluated its expansion with `eval!`, which
+; does no env save/restore -- so a `def` in the expansion (what
+; %sr-rewrite-clause rewrites a template's `define` INTO, precisely so it stays
+; put) landed wherever the engine judged current.  `(eval <form> %sr-env)` is
+; the shape letrec-syntax already used here, and it keeps the definition inside
+; the expansion where R5RS pitfall 3.2 wants it.
+;
+; WHAT CHANGED UNDERNEATH.  x-engine-c v0.2.8 (#41): a `def` scopes by the LIVE
+; FRAME, not by an empty save stack.  x-lang picked it up in f3698b11, a pin
+; bump and nothing else.  Holding the x-lang source AT f3698b11 and swapping
+; only the engine reproduces the whole split -- v0.2.7 green, v0.2.8 red -- so
+; this is the engine's ruling, not a library change.
+;
+; MEASURED, whole suite, one file per process, booted from source
+; (IMG=0 SPEC_BATCH=1), each row a full run:
+;
+;   platform                        engine   before   after
+;   x-lang v0.10.0 (this pairing)   v0.1.6   667/0    667/0
+;   x-lang main 6c0ab5c5            v0.2.8   667/24   667/2
+;
+; So: no movement on the release this bundle declares, and 24 -> 2 on main.
+;
+; THE 2 THAT REMAINED WERE ONE DEFECT, AND IT WAS NOT THIS FORM'S.  let-syntax's
+; expansion leaked its `def` to the global env under v0.2.8; that leak bound `x`
+; globally in the pitfall-3.2 case, and a later macro then read the leaked
+; VALUE, which was the whole of "macro expanding to lambda" answering 6 (= 1 +
+; 5) instead of 15.  Fixed at let-syntax below, and fixing the leak took BOTH
+; failures with it: nothing puts a stray global in scope any more, so the second
+; had nothing to read.  Note the divergence is narrow: a plain `def` inside an
+; operative called from a `let` still stays local on v0.2.8; it was the
+; eval!-of-an-expansion path alone that reached global.
+;
+; NOT RECORDED IN known-failures.txt, and that is deliberate -- see the note
+; there.  One contract serves both CI legs, and these two PASS on the pinned
+; leg, so recording them would turn the pinned leg red while silencing the
+; early warning the main leg exists to give.
+;
+; SPEC_SEAM_COLLECT WAS NOT IT, though the shape invited the guess -- a name
+; defined in one snippet and gone in the next is exactly what the per-seam
+; collect (x-lang#568/#572) does to a bundle whose reader holds C-side state,
+; and the sibling bundles set the knob to 0 for that.  Measured both ways
+; against the same platform, 16-syntax-rules: 32/22 with the collect on, the
+; SAME 32/22 with it off.  It is not this bundle's problem and stays unset.
+; The names also never were cross-snippet: every one of the 22 defines and
+; uses its macro in ONE snippet.
+;
+; letrec-syntax needs no change: it already passed the caller's environment to
+; `eval` explicitly, so it never depended on the depth.
 (define
   define-syntax
   (op (name transformer-expr)
@@ -329,27 +389,59 @@
     (def %ds-xfm-name
       (string->symbol
         (string-append "%xfm-" (symbol->string name))))
-    (eval
-      (list
-        (lit begin)
-        (list (lit def) %ds-xfm-name %ds-xfm)
+    (%def-global %ds-xfm-name %ds-xfm)
+    (%def-global
+      name
+      (eval
         (list
-          (lit def)
-          name
+          (lit op)
+          (lit %sr-args)
+          (lit %sr-env)
           (list
-            (lit op)
-            (lit %sr-args)
-            (lit %sr-env)
+            (lit eval)
             (list
-              (lit eval!)
-              (list
-                %ds-xfm-name
-                (list (lit pair) (list (lit lit) name) (lit %sr-args))))))))))
+              %ds-xfm-name
+              (list (lit pair) (list (lit lit) name) (lit %sr-args)))
+            (lit %sr-env)))
+        e))))
 
 ; let-syntax: local syntax bindings
 ; Processes one binding at a time, wrapping in let + recursing
 ; Uses %ls- prefixed params to avoid shadowing by let*/let (which also
 ; use 'bindings'/'body'/'e' as op params in dynamic scope).
+;
+;  THE EXPANSION EVALUATES IN THE USE SITE'S FRAME, AND THE ENV IS CAPTURED
+; BEFORE THE TRANSFORMER RUNS.  The generated op used to hand its expansion to
+; `eval!`, which does no env save/restore, so a `def` in the expansion landed
+; wherever the engine judged current -- global, under x-engine-c v0.2.8, which
+; scopes a `def` by the LIVE FRAME.  That is R5RS pitfall 3.2 failing, and the
+; leaked binding then fed a later macro a value it had no business seeing.
+;
+;  THE OBVIOUS REPAIR IS WRONG, and it is worth saying why, because it was
+; tried and reverted twice before this.  (eval <form> %sr-env) -- the shape
+; define-syntax above uses -- breaks let-syntax on BOTH engines, and the reason
+; is at the head of this comment: OP PARAMS ARE DYNAMICALLY SCOPED.  In that
+; spelling the env argument is read AFTER the transformer call, and let-syntax
+; NESTS -- pitfall 3.3 puts one inside another -- so an inner expansion has
+; rebound %sr-env by the time it is read and the expansion evaluates in the
+; wrong frame.  `eval!` never named the env at all, which is exactly why it was
+; immune to that and leaked instead.  Wrapping the expansion in (let () ...) is
+; the other dead end: the pinned engine stays green and main goes to 32.
+;
+;  So both params are CAPTURED AS LAMBDA ARGUMENTS first.  Arguments are
+; evaluated before the body, so the capture happens before any transformer can
+; run, and lambda params are LEXICAL, so no nested expansion can reach them.
+; letrec-syntax below needs none of this: it already passed the caller's
+; environment to `eval` explicitly, so it never depended on the depth.
+;
+;  MEASURED, whole suite, one file per process, booted from source
+; (IMG=0 SPEC_BATCH=1), each row a full run, on top of the define-syntax
+; conversion above:
+;
+;   platform          engine   before   after
+;   x-lang v0.10.0    v0.1.6   667/0    667/0
+;   x-lang v0.13.0    v0.2.8   667/2    667/0   (release-ref: history)
+;   x-lang main       v0.2.8   667/2    667/0   (release-ref: history)
 
 (define
   let-syntax
@@ -378,10 +470,17 @@
                     (lit %sr-args)
                     (lit %sr-env)
                     (list
-                      (lit eval!)
                       (list
-                        %ls-xfm-name
-                        (list (lit pair) (list (lit lit) %ls-name) (lit %sr-args)))))))
+                        (lit lambda)
+                        (list (lit %ls-use-env) (lit %ls-use-args))
+                        (list
+                          (lit eval)
+                          (list
+                            %ls-xfm-name
+                            (list (lit pair) (list (lit lit) %ls-name) (lit %ls-use-args)))
+                          (lit %ls-use-env)))
+                      (lit %sr-env)
+                      (lit %sr-args)))))
               (pair (lit let-syntax) (pair (cdr %ls-bindings) %ls-body))))
           %ls-e)))))
 
