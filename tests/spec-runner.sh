@@ -58,4 +58,87 @@ LANG_LIB="$BUNDLE/tests/lib/harness.gen.x"
 # while diagnosing, without moving anything into the suite.
 SPEC_PATH="${SPEC_PATH:-$BUNDLE/tests/specs}"
 
+# THE SUITE BOOTS FROM A STATE IMAGE OF THE HARNESS, when the platform can
+# write one -- and for a bundle this size the BOOT is what the suite costs.
+# Every spec file is its own process, and each one reads the tower and this
+# lang from source before its first case; x-python measured the same shape at
+# 26 seconds of boot in a 38-second file, two thirds of its wall clock
+# (x-python#43, which is where this block comes from -- x-awk has run this way
+# since 2026-09-06).
+#
+# tools/dev/image-build.sh images a child base that loaded the harness and
+# keys the image on what it depends on: the harness, the platform's lib/, its
+# engine, and every tree the harness armed -- read back off the generated
+# harness itself (its `import-path!` lines are this bundle and, for a lang
+# built on another, the lang beneath it), so a change to EITHER rewrites the
+# image rather than leaving a stale one that still answers.
+#
+# The writer lives in a CHECKOUT only; an installed tree, and any release
+# older than the image tools, boots from source and says so -- which is what
+# the pinned leg does until this bundle's (requires-release ...) names a
+# release carrying them.  IMG=0 is the control: the same suite from source,
+# one file per process either way, so the boot is the only difference -- and
+# it is the FIRST thing to try against a failure that reproduces nowhere
+# else, because a stale or wrong image is invisible in a diff.
+if [ "${IMG:-1}" = 0 ]; then
+	SPEC_BATCH="${SPEC_BATCH:-1}"; export SPEC_BATCH
+else
+	_builder="$X_ROOT/tools/dev/image-build.sh"
+	# A PLATFORM THAT IMAGES ITS JIT TRAMPOLINES CANNOT CARRY AN IMAGE THAT
+	# COMPILES, and the failure is a SIGSEGV rather than a wrong answer:
+	# tool/asm-compile.x held those addresses as plain integers from dlsym, so
+	# an image carries the WRITER process's addresses and a compile on the far
+	# side of a load jumps into them (x-python#43 saw exit 139 on the analyser
+	# swap).  x-lang 41b93185 made them transients the recache hook remakes;
+	# the probe is for the FIX and not for a version, so a platform that has
+	# it is used and one that has not boots from source.
+	_asm="$X_ROOT/lib/x/tool/asm-compile.x"
+	if [ -f "$_asm" ] && ! grep -q "image-transients" "$_asm"; then
+		echo "x-r5rs: platform images the JIT trampoline addresses (pre-41b93185) -- the suite boots from source" >&2
+		_builder=""
+	fi
+	# A PLATFORM WHOSE RECACHE WALK IS SHAPED LIKE R5RS ITERATION RESTORES
+	# NOTHING, and the failure is a WRONG ANSWER rather than a crash.  Scheme's
+	# `do` iterates where x's sequences, so scm/derived.scm dispatches on shape:
+	# a first operand that is a list of pairs is iteration, anything else is
+	# handed to the platform's sequencer.  boot/reflect.x spelled its hook walk
+	# `(do ((first l)) (self (rest l)))` -- one binding list, then a (test .
+	# results) pair -- which is iteration by that rule, so (%image-recache!)
+	# walked the whole hook list and called NO HOOK.  Nothing raises: every
+	# value the writer nil'd as a transient stays nil, and the first thing to
+	# fail is a float parsed through float.x's strtod handle -- `ffi-call
+	# s0->d: nil`, 34 of those and a hundred more dying around them, thousands
+	# of forms from the cause.  Only an IMAGE boot reaches the hooks at all,
+	# which is why the suite from source never saw it.
+	#  The probe is for the DEFECT'S OWN SPELLING, not for a version and not
+	# for the fix: a platform that has rewritten the walk any other way is
+	# taken at its word, the way the asm-compile probe above takes a platform
+	# that has made its trampolines transients.
+	#  COMMENTS ARE STRIPPED BEFORE THE MATCH, because the platform's fix
+	# QUOTES the broken spelling in the comment that explains it -- so a
+	# probe that grepped the file whole reported the defect on a platform
+	# that had just been fixed, and the suite booted from source with a
+	# message saying the opposite of the truth.  `;` begins a comment in x
+	# and reflect.x has no string holding one.
+	_reflect="$X_ROOT/lib/x/boot/reflect.x"
+	if [ -f "$_reflect" ] && sed 's/;.*//' "$_reflect" | grep -q 'do ((first l)) (self (rest l))'; then
+		echo "x-r5rs: platform's (%image-recache!) is shaped like R5RS iteration -- the suite boots from source" >&2
+		_builder=""
+	fi
+	if [ -f "$_builder" ]; then
+		# The trees the harness armed, in the order it armed them.
+		_keys=$(sed -n 's/^(import-path! "\(.*\)")$/\1/p' "$LANG_LIB")
+		if X_BIN="$X_BIN" sh "$_builder" "$LANG_LIB" "$BUNDLE/tests/lib/.images" $_keys; then
+			X_IMG_DIR="$BUNDLE/tests/lib/.images"; export X_IMG_DIR
+		else
+			echo "x-r5rs: no state image (image-build exit $?) -- the suite boots from source" >&2
+		fi
+	elif [ -n "$_builder" ]; then
+		# Only when the writer is genuinely absent.  A probe above that
+		# cleared $_builder has already said why, and this line claiming a
+		# missing writer on top of it named the wrong cause.
+		echo "x-r5rs: no image writer at $_builder -- the suite boots from source" >&2
+	fi
+fi
+
 . "$X_ROOT/tests/spec-runner.sh"
