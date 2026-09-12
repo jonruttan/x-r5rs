@@ -355,18 +355,15 @@
 ;
 ; So: no movement on the release this bundle declares, and 24 -> 2 on main.
 ;
-; THE 2 THAT REMAIN ARE ONE DEFECT, AND IT IS NOT THIS FORM'S.  let-syntax's
-; expansion still leaks its `def` to the global env under v0.2.8; that leak
-; binds `x` globally in the pitfall-3.2 case, and hygiene then substitutes the
-; leaked VALUE into a later macro, which is the whole of "macro expanding to
-; lambda" answering 6 (= 1 + 5) instead of 15.  Fixing it needs the expansion
-; to evaluate in a frame it cannot escape, and neither shape tried here does
-; it: (eval <form> %sr-env), which is what define-syntax above now uses, breaks
-; let-syntax on BOTH engines (9 failures each), and wrapping the expansion in
-; (let () ...) leaves the pinned engine green but takes main to 32 failures.
-; Neither is a fix and neither is kept.  Note the divergence is narrow: a plain
-; `def` inside an operative called from a `let` still stays local on v0.2.8; it
-; is the eval!-of-an-expansion path alone that now reaches global.
+; THE 2 THAT REMAINED WERE ONE DEFECT, AND IT WAS NOT THIS FORM'S.  let-syntax's
+; expansion leaked its `def` to the global env under v0.2.8; that leak bound `x`
+; globally in the pitfall-3.2 case, and a later macro then read the leaked
+; VALUE, which was the whole of "macro expanding to lambda" answering 6 (= 1 +
+; 5) instead of 15.  Fixed at let-syntax below, and fixing the leak took BOTH
+; failures with it: nothing puts a stray global in scope any more, so the second
+; had nothing to read.  Note the divergence is narrow: a plain `def` inside an
+; operative called from a `let` still stays local on v0.2.8; it was the
+; eval!-of-an-expansion path alone that reached global.
 ;
 ; NOT RECORDED IN known-failures.txt, and that is deliberate -- see the note
 ; there.  One contract serves both CI legs, and these two PASS on the pinned
@@ -412,6 +409,39 @@
 ; Processes one binding at a time, wrapping in let + recursing
 ; Uses %ls- prefixed params to avoid shadowing by let*/let (which also
 ; use 'bindings'/'body'/'e' as op params in dynamic scope).
+;
+;  THE EXPANSION EVALUATES IN THE USE SITE'S FRAME, AND THE ENV IS CAPTURED
+; BEFORE THE TRANSFORMER RUNS.  The generated op used to hand its expansion to
+; `eval!`, which does no env save/restore, so a `def` in the expansion landed
+; wherever the engine judged current -- global, under x-engine-c v0.2.8, which
+; scopes a `def` by the LIVE FRAME.  That is R5RS pitfall 3.2 failing, and the
+; leaked binding then fed a later macro a value it had no business seeing.
+;
+;  THE OBVIOUS REPAIR IS WRONG, and it is worth saying why, because it was
+; tried and reverted twice before this.  (eval <form> %sr-env) -- the shape
+; define-syntax above uses -- breaks let-syntax on BOTH engines, and the reason
+; is at the head of this comment: OP PARAMS ARE DYNAMICALLY SCOPED.  In that
+; spelling the env argument is read AFTER the transformer call, and let-syntax
+; NESTS -- pitfall 3.3 puts one inside another -- so an inner expansion has
+; rebound %sr-env by the time it is read and the expansion evaluates in the
+; wrong frame.  `eval!` never named the env at all, which is exactly why it was
+; immune to that and leaked instead.  Wrapping the expansion in (let () ...) is
+; the other dead end: the pinned engine stays green and main goes to 32.
+;
+;  So both params are CAPTURED AS LAMBDA ARGUMENTS first.  Arguments are
+; evaluated before the body, so the capture happens before any transformer can
+; run, and lambda params are LEXICAL, so no nested expansion can reach them.
+; letrec-syntax below needs none of this: it already passed the caller's
+; environment to `eval` explicitly, so it never depended on the depth.
+;
+;  MEASURED, whole suite, one file per process, booted from source
+; (IMG=0 SPEC_BATCH=1), each row a full run, on top of the define-syntax
+; conversion above:
+;
+;   platform          engine   before   after
+;   x-lang v0.10.0    v0.1.6   667/0    667/0
+;   x-lang v0.13.0    v0.2.8   667/2    667/0   (release-ref: history)
+;   x-lang main       v0.2.8   667/2    667/0   (release-ref: history)
 
 (define
   let-syntax
@@ -440,10 +470,17 @@
                     (lit %sr-args)
                     (lit %sr-env)
                     (list
-                      (lit eval!)
                       (list
-                        %ls-xfm-name
-                        (list (lit pair) (list (lit lit) %ls-name) (lit %sr-args)))))))
+                        (lit lambda)
+                        (list (lit %ls-use-env) (lit %ls-use-args))
+                        (list
+                          (lit eval)
+                          (list
+                            %ls-xfm-name
+                            (list (lit pair) (list (lit lit) %ls-name) (lit %ls-use-args)))
+                          (lit %ls-use-env)))
+                      (lit %sr-env)
+                      (lit %sr-args)))))
               (pair (lit let-syntax) (pair (cdr %ls-bindings) %ls-body))))
           %ls-e)))))
 
