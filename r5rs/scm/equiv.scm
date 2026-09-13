@@ -16,11 +16,10 @@
 
 ; --- Equivalence (identity for pairs/procs, = for numbers/chars) ---
 
-; A CHAR IS AN INT UNDERNEATH, so (eq? 65 #\A) is #t in x -- characters and
-; small integers share identity.  Scheme says (eqv? 65 #\A) is #f, so the
-; char cases have to come FIRST and a char-versus-non-char has to be answered
-; before the fallback ever sees it.  Without the second clause the fallback
-; reaches (eq? 65 #\A) and agrees with x rather than with Scheme.
+; A char is an int underneath, so (eq? 65 #\A) is #t in x -- characters and
+; small integers share identity. Scheme says (eqv? 65 #\A) is #f, so the char
+; cases come first and char-versus-non-char is answered before the fallback,
+; which would otherwise reach (eq? 65 #\A) and agree with x rather than Scheme.
 (define
   (eqv? a b)
   (cond

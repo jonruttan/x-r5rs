@@ -56,9 +56,9 @@ TMP="${TMPDIR:-/tmp}/if-ladders.$$"
 trap 'rm -f "$TMP.files" "$TMP.raw" "$TMP.want" "$TMP.have"' EXIT
 
 find "$MODULES" -name '*.x' | sort > "$TMP.files"
-# AN EMPTY SWEEP IS A BUG, NOT A CLEAN BILL.  With no files read, every
-# manifest row looks fixed and the ratchet would cheerfully ask for the whole
-# file to be deleted.  A moved module directory should say so instead.
+# An empty sweep is a bug, not a clean bill: with no files read every manifest
+# row looks fixed and the ratchet would ask for the whole file to be deleted.
+# A moved module directory should say so instead.
 [ -s "$TMP.files" ] || {
 	echo "if-ladders: no *.x under $MODULES -- has the module directory moved?" >&2
 	exit 1
@@ -68,11 +68,10 @@ find "$MODULES" -name '*.x' | sort > "$TMP.files"
 # files are named absolutely and the checker runs from there.
 X_ROOT="$("$X" --share-dir)"
 : > "$TMP.raw"
-# ONE FILE PER PROCESS: the walker reads every form of every body, and a large
-# enough file is enough to trip a shared ceiling half way through.  `set -e`
-# carries a checker that DID trip out to here as a failed check -- a truncated
-# report would quietly make the manifest wrong rather than loud, which is the
-# one failure this whole arrangement cannot tolerate.
+# One file per process: the walker reads every form of every body, and a large
+# enough file can trip a shared ceiling half way through. `set -e` carries a
+# checker that tripped out to here as a failed check, rather than letting a
+# truncated report make the manifest quietly wrong.
 while IFS= read -r f; do
 	( cd "$X_ROOT" && "$X" --no-pin -q -f "$BUNDLE/tools/check/if-ladders.x" -- "$f" ) \
 		>> "$TMP.raw"

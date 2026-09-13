@@ -1,17 +1,9 @@
 name: CI
 
-# THE MATRIX IS THE POINT.  The 2024 generation of these langs had
-# genuinely good spec suites that nothing ever ran once they left the x-lang
-# tree, and that is the whole of why they rotted -- not the missing digests,
-# not the path literals on their own.  A lang without its suite in its
-# own CI is the last generation with a fresh coat of paint.
-#
-# TWO RELEASES, DELIBERATELY.  A bundle names the x-lang it was built against
-# in lang.xon's (requires-release ...); the matrix runs that one AND
-# whatever main is now.  The pairing row is what turns "the platform moved
-# underneath us" from something discovered years later into a red build on the
-# day it happens.  The `main` leg is allowed to fail -- it is an early warning
-# about the platform, not a verdict on this bundle.
+# The matrix runs two x-lang refs: the release this bundle declares in
+# lang.xon (requires-release ...) and current main. The pinned leg proves the
+# bundle still runs on the platform it declares; the main leg is an early
+# warning that x-lang has moved underneath it, and is allowed to fail.
 
 on:
   push:
@@ -24,11 +16,9 @@ on:
     - cron: '0 6 * * 1'
 
 jobs:
-  # THE MATRIX IS READ, NOT WRITTEN.  The pinned leg used to be a literal kept
-  # equal to lang.xon by a check further down -- two copies of one fact, with a
-  # gate to catch the drift between them.  Deriving it removes the second copy
-  # instead of guarding it, which is the same ruling tools/check/release-refs.sh
-  # applies to every other place this release is named.
+  # The pinned matrix leg is read from lang.xon, not written here, so there is
+  # no second copy to keep in sync -- the same ruling release-refs.sh applies
+  # wherever these versions are named.
   prepare:
     runs-on: ubuntu-latest
     outputs:
@@ -54,12 +44,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # BOTH LEGS, AND THEY ANSWER DIFFERENT QUESTIONS.  The pinned leg
-        # proves this bundle still runs on the platform it DECLARES; the main
-        # leg is an early warning that x-lang has moved underneath it, and is
-        # allowed to fail.  The pinned row comes from lang.xon via `prepare`,
-        # so it cannot disagree with the manifest -- there is nothing here to
-        # keep in sync.
+        # Both legs answer different questions: the pinned leg proves this
+        # bundle still runs on the platform it declares; the main leg is an
+        # early warning that x-lang has moved underneath it, and is allowed to
+        # fail. The pinned row comes from lang.xon.
         x-lang: ${{ fromJSON(needs.prepare.outputs.legs) }}
 
     steps:
@@ -82,60 +70,25 @@ jobs:
           make             # x-bin at the repo root -- `make engine` does not build it
           make boot        # the launcher-free amalgams the harness loads
 
-      # THE GATE IS spec-gate, NOT spec-runner.  The runner exits non-zero on
-      # any failure, which is right at a prompt and wrong here: this bundle
-      # carries documented debt (the ellipsis group), so the raw runner makes
-      # it permanently red and the signal stops meaning anything.  The gate
-      # compares the failing test NAMES against
-      # tests/contract/known-failures.txt and is red when they differ in
-      # EITHER direction -- a new failure, or a recorded one that now passes.
-      # SPEC_BATCH=1 BECAUSE A HOSTED RUNNER IS A MEMORY-CONSTRAINED BOX, which
-      # is exactly the case the runner's own comment says to lower it for.
-      #
-      # The runner buckets up to SPEC_BATCH (default 8) spec files into ONE
-      # process, and there is no auto-GC during a batch -- a bucket accumulates
-      # every file's parse-time and per-snippet garbage until the process
-      # exits.  That is fine on a 32 GB dev box and is not fine here: a
-      # standard hosted runner has 16 GB, and x-lang's runaway ceiling is 650M
-      # objects (~31 GB), so the guard cannot trip before the machine does.
-      # The suite was killed by SIGTERM partway through, at 56s, 60s and 95s
-      # across three runs -- varying, because it is memory and not a timeout.
-      #
-      # LOWERING THE CEILING INSTEAD WOULD NOT WORK.  It is not a margin these
-      # bundles sit under: x-r5rs needs somewhere between 300M and 325M objects
-      # resident to finish at all, and arming the guard below that reproduces
-      # the batch deaths it exists to report (300M: 667/34).  The memory has to
-      # go down, not the limit.
-      #
-      # So: one file per process, which is the pre-bucketing behaviour exactly.
-      # It costs a tower boot per spec file and buys a peak this runner can
-      # hold.  PARALLEL_JOBS is left alone -- single-file processes are small
-      # enough that the CPU-count default is not the binding constraint.
+      # SPEC_BATCH=1 because a hosted runner is memory-constrained: the runner
+      # buckets up to SPEC_BATCH spec files into one process with no auto-GC
+      # during a batch, so a bucket accumulates every file's garbage until it
+      # exits -- fine on a dev box, not on a 16 GB runner where the runaway
+      # ceiling cannot trip before the machine does. Lowering the ceiling would
+      # not help -- the suite needs the objects resident to finish -- so the
+      # memory goes down instead: one file per process.
       - name: Run the R5RS specs
         env:
           SPEC_BATCH: 1
         run: X="$PWD/.x-lang/x.sh" sh tests/spec-gate.sh
 
   if-ladders:
-    # `match` IS THE PRIMITIVE, and a decision with four or more arms written
-    # as nested ifs says the same thing one indent deeper per arm.  The check
-    # is a RATCHET over tools/contract/if-ladders.txt: the debt it was born
-    # with may only shrink, and a new ladder fails here rather than in review.
-    #
-    # THE MANIFEST IS EMPTY, and this job is what keeps it that way.  It cost
-    # nothing to arm -- r5rs/*.x has no ladder longer than two arms, because
-    # the decisions live in r5rs/scm/*.scm where `cond` is already flat -- so
-    # the emptiness is a rule from the first commit rather than a target.
-    #
-    # It needs the platform, because the checker is x -- an if ladder is a
-    # SHAPE, and reading the file as s-expressions is the only way to see one.
-    #
-    # x-lang MAIN, not the declared release, and deliberately unlike every
-    # other job here.  This one asks a question about THIS REPOSITORY's source
-    # shape; the platform is a parser it borrows, not a thing under test, and
-    # the checker is tooling rather than payload -- `make install` does not
-    # ship it.  Pinning it would mean a release bump could break the linter,
-    # which is a worse trade than the one main asks for.
+    # `match` is the primitive; a decision with four or more arms written as
+    # nested ifs says the same thing one indent deeper per arm. This is a
+    # ratchet over tools/contract/if-ladders.txt (currently empty): a new
+    # ladder fails here rather than in review. No runtime needed -- the checker
+    # parses the modules and never evaluates them -- so it runs against x-lang
+    # main, borrowing the platform only as a parser.
     name: if ladders are match
     runs-on: ubuntu-latest
     steps:
@@ -156,23 +109,18 @@ jobs:
         run: X="$PWD/.x-lang/x.sh" sh tools/check/if-ladders.sh
 
   relocatable:
-    # THE RULE THAT ACTUALLY KILLED THE LAST GENERATION, as a gate -- and it
-    # is stricter now than the contract requires.  The contract exempts an app
-    # ENTRY, because an in-tree app self-boots.  A bundle does not: x.sh boots
-    # the dialect lang.xon declares and arms this root before run.x is read, so
-    # ZERO files here need a root-relative literal, run.x included.  A bundle
-    # that grows one is nailed to the directory it was written in, and the
-    # symptom does not appear until someone moves it -- which is to say, never
-    # in the repository where it was developed.
+    # Gate: a bundle needs no root-relative path literal, not even in run.x
+    # (x.sh boots the dialect and arms this root before run.x is read). One
+    # would nail the bundle to the directory it was written in, and the
+    # symptom only appears once someone moves it.
     name: no path literals at all
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # THE KIT SHIPS WITH THE PLATFORM, so this job needs x-lang present --
-      # a shallow checkout of the release lang.xon declares, not a build.  The
-      # check itself reads lang.xon and greps the tree; it wants the FILE, not
-      # an engine, which is why X_LANG_KIT points straight at the kit rather
-      # than going through `x --share-dir`.
+      # The kit ships with the platform, so this job needs x-lang present -- a
+      # shallow checkout of the release lang.xon declares, not a build. The
+      # check reads lang.xon and greps the tree, so X_LANG_KIT points straight
+      # at the kit rather than going through `x --share-dir`.
       - name: Check out the lang kit
         run: |
           declared=$(sed -n 's/^(requires-release "\(.*\)")$/\1/p' lang.xon)
@@ -186,15 +134,10 @@ jobs:
 
       - name: No path literals outside run.x
         run: |
-          # Match the entry however grep spells its path (./run.x or run.x),
-          # and ignore COMMENTS -- a file may legitimately quote the literal it
-          # no longer uses, which is exactly what a port's notes do.
-          # EXCLUDE THE PLATFORM CLONE.  The lang-kit step above clones x-lang
-          # into .x-lang in this same job, and x-lang's own boot files use
-          # root-relative includes legitimately -- lib/x.x reaches
-          # lib/x/boot/helium.x that way.  This gate asks whether THIS BUNDLE
-          # is relocatable; a vendored copy of the platform is not the bundle,
-          # and scanning it fails the check on someone else's correct code.
+          # Ignore comments -- a file may quote a literal it does not use.
+          # Exclude the platform clone: the lang-kit step clones x-lang into
+          # .x-lang, whose own boot files use root-relative includes
+          # legitimately, and this gate asks only whether THIS bundle relocates.
           hits=$(grep -rn '(include "[a-zA-Z]' --include='*.x' \
                  --exclude-dir='.x-lang' . \
                  | grep -Ev ':[0-9]+:[[:space:]]*;' || true)

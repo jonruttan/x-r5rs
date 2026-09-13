@@ -6,32 +6,21 @@
 ; @copyright 2026 Jon Ruttan
 ; @license MIT No Attribution (MIT-0)
 ;
-; THIS FILE IS WHERE THE ROT LIVED.  Everything else in this bundle is Scheme
-; written in Scheme; this is the one layer that names x-lang directly, so it is
-; the one layer the platform's four-year drift landed on.  Three kinds of
-; change, and only the first is a rename:
+; This is the one layer that names x-lang directly (everything else in the
+; bundle is Scheme written in Scheme), so it carries three kinds of adaptation:
 ;
-;   1. %-privatisation.  set-first! is %set-first!, and the % names take a
-;      leading receiver -- which callers do not pass, because the receiver is
-;      supplied at the call site.  (def set-car! %set-first!) is still correct.
+;   1. %-privatised names. set-first! is %set-first!, and the % names take a
+;      leading receiver supplied at the call site.
+;   2. Bare globals that became class methods. length, append, map, vector-ref,
+;      string-length and the rest live on List/Vector/Str8 now; the receiver
+;      moved into the call, so each needs a wrapper.
+;   3. Ambient prims that became catalog entries: `convert` and `read` are
+;      fetched with prim-ref.
 ;
-;   2. Bare globals became CLASS METHODS.  length, append, map, filter and
-;      reverse are unbound in every dialect now; they live on List.  vector-ref
-;      is (Vector ref), string-length is (Str8 length).  These are not renames:
-;      the receiver moved into the call, so each one needs a wrapper.
-;
-;   3. Ambient prims became CATALOG entries.  `convert` and `read` are fetched
-;      with prim-ref rather than assumed.
-;
-; AND ONE THAT IS NONE OF THE THREE, and matters more than all of them:
-;
-;   (def lambda fn)
-;
-; was the 2024 line, and it is now wrong in a way that breaks every procedure
-; in the bundle.  x's `fn` takes an explicit receiver -- (fn (_ n) ...) -- so
-; aliasing lambda to it binds Scheme's FIRST PARAMETER to the receiver.
-; ((lambda (x) x) 42) returns the closure, not 42, and every .scm file here is
-; written in lambda.  It has to be an operative that splices the receiver in.
+; And `lambda`: it must be an operative that splices x's receiver in, not
+; (def lambda fn). x's `fn` takes an explicit receiver -- (fn (_ n) ...) -- so
+; aliasing lambda to it would bind Scheme's first parameter to the receiver,
+; and every .scm file here is written in lambda.
 
 (provide r5rs/aliases lambda define begin quote quasiquote)
 
@@ -49,20 +38,13 @@
 (def convert (fn (_ v target . extra) (apply %cvt (pair v (pair target extra)))))
 
 ; --- The binding forms -------------------------------------------------------
-; lambda: splice x's receiver into Scheme's formals.  A dotted formal
-; ((lambda args ...) -- a symbol rather than a list) has to keep its shape, so
-; the receiver is spliced only when there is a list to splice into; a bare
-; symbol becomes (_ . args), which is x's own spelling for the same thing.
-; INTERIOR DEFINES ARE REWRITTEN AT CONSTRUCTION TIME, which is how Schemes
-; handle them anyway (the letrec* conversion).  They cannot work at run time:
-; `define` is an operative, so its `def` executes inside define's OWN frame,
-; and in body position that frame is not in tail position -- the binding is
-; created and discarded with it, leaving the name unbound EVERYWHERE rather
-; than shadowed.  A literal `def` in the same slot binds in the body's frame
-; and is visible to the forms after it.
-;
-; One level deep, deliberately: exactly the forms that ARE the body.  A define
-; inside an `if` inside a body is not a definition context in Scheme either.
+; lambda: splice x's receiver into Scheme's formals. A dotted formal (a bare
+; symbol rather than a list) keeps its shape -- the receiver is spliced only
+; when there is a list to splice into, and a bare symbol becomes (_ . args).
+; Interior defines are rewritten at construction time (the letrec* conversion
+; Schemes use): a `define` in body position becomes a literal `def`, which
+; binds in the body's frame and is visible to the forms after it. One level
+; deep -- exactly the forms that are the body.
 (def %r5rs-def-form
   (fn (_ form)
     (if (pair? form)
@@ -95,52 +77,14 @@
           (%r5rs-body-defs body)))
       e)))
 
-; define, in both spellings.
-;
-; NO LONGER A TCO TRICK.  This used to put its eval in tail position so that
-; TCO would pop the operative's frame before `def` ran, leaving the save-stack
-; empty and the binding global -- because `def` decides global-versus-local by
-; save-stack depth and an operative has no other way to define for its caller.
-; That worked and was extremely fragile: ONE extra wrapper frame between the
-; caller and here and every definition landed nowhere, silently.  It is why
-; x-r7rs cannot load its own `guard` (x-lang#527).
-;
-; eval! IS THE ANSWER, and it was there all along.  It evaluates with no env
-; save/restore, so a `def` inside it persists in the caller's world whatever the
-; frame depth -- no tail-position accident, no TCO dependency.
-;
-; This file briefly called (prim-ref (lit base) (lit def-global)) BEFORE the
-; primitive existed (proposed on x-lang#527, absent through engine v0.1.4).
-; An engine that lacks it answers () for the prim-ref, so every `define`
-; called nil and bound nothing.  663 of 663 specs failed on unbound symbols,
-; with no diagnostic pointing anywhere near here.  A prim-ref miss is
-; indistinguishable from a legitimate nil until it is far away.
-; THE VALUE IS QUOTED, and leaving it bare is a bug that hides for a long time.
-; (list (lit def) n v) builds (def name <value>) and eval! then EVALUATES it --
-; so the value is evaluated a second time.  Numbers, strings and procedures
-; self-evaluate and nothing looks wrong; a SYMBOL value gets looked up.
-;   (define %ellipsis-sym (string->symbol "..."))
-; therefore died with `Unbound SYMBOL '...'`, three files away from the cause.
-; Wrapping in (lit ...) makes def bind the value it was handed.
-; TWO MECHANISMS, BECAUSE ONE OF THEM IS NOT ENOUGH ON ITS OWN.
-;
-; eval! evaluates with no env save/restore, so a `def` inside it lands in
-; whatever env is CURRENT.  At top level that is global and everything works.
-; It is not frame-independent: interpose one operative frame -- which
-; shadowing any late-bound name does, R7RS `guard` being the live case --
-; and the binding lands in that frame and is discarded with it.  Measured:
-; with a bare passthrough guard loaded, (define v 42), (define (f p) p) and
-; (define f (lambda (p) p)) ALL bind nothing.
-;
-; (base def-global) takes `def`'s top-level path unconditionally and is
-; frame-independent.  It SHIPPED in engine v0.1.5, and this bundle's pinned
-; platform (x-lang v0.14.0 -> engine v0.2.8) carries it, so the primitive is
-; the LIVE path here; eval! remains the fallback for an older engine --
-; correct at the prompt on any, correct under frames on one that carries it.
-;
-; THE FALLBACK IS EXPLICIT ON PURPOSE.  prim-ref answers () for a member
-; that is not there, so calling the result blind binds nothing and reports
-; nothing; that cost two long hunts already.  See x-lang#527.
+; define, in both spellings. Binds globally via (base def-global), which takes
+; def's top-level path unconditionally and is frame-independent; where the
+; engine lacks it (prim-ref answers ()), the fallback is eval! of
+; (def name (lit value)). The (lit ...) wrap matters: eval! evaluates the def
+; form it is handed, which would evaluate the value a second time -- invisible
+; for self-evaluating values, but a symbol value would be looked up. The eval!
+; fallback is not frame-independent, so def-global is preferred where present.
+; See x-lang#527.
 (def %dg-prim (prim-ref (lit base) (lit def-global)))
 (def %def-global
   (if (null? %dg-prim)
@@ -168,18 +112,11 @@
 (def set-cdr! %set-rest!)
 
 ; --- Lists, vectors, strings: the classes, unwrapped ------------------------
-; SUBJECT-LAST, AND THAT IS THE TRAP.  These were bare globals in 2024 and are
-; class methods now -- but the methods do not take their subject first:
-;
-;   (List ref n lst)      (Vector ref i v)      (Str8 ref i v)
-;   (List drop n lst)     (Vector set! i x v)   (Str8 sub st LEN v)
-;
-; So this is not a receiver-shuffle, it is an argument reordering, and one that
-; type-checks either way often enough to be found by a wrong answer rather than
-; an error.  (Str8 sub) takes a LENGTH where Scheme's substring takes an END,
-; which is the same hazard once more.  x-lang#66 tracks the convention itself.
-;
-; Every wrapper below exists to put Scheme's order back.
+; The class methods take their subject last, not first: (List ref n lst),
+; (Vector set! i x v), (Str8 sub st len v). So these wrappers are an argument
+; reordering, not a receiver shuffle, and (Str8 sub) takes a length where
+; Scheme's substring takes an end. Every wrapper below puts Scheme's order
+; back. x-lang#66 tracks the convention.
 (def length (fn (_ l) (List length l)))
 (def reverse (fn (_ l) (List reverse l)))
 (def list-ref (fn (_ l n) (List ref n l)))
@@ -241,9 +178,9 @@
 (def make-string
   (fn (_ n . rest) (Str8 make n (if (null? rest) #\space (first rest)))))
 
-; CHAR TO STRING IS NOT A CONVERT.  (%cvt #\A %string) answers nil -- the
-; char->string direction is not registered on the type -- so this goes through
-; Str8 make, which builds a one-character string from a fill.
+; char->string is not a convert: (%cvt #\A %string) answers nil, since that
+; direction is not registered on the type, so this goes through Str8 make,
+; building a one-character string from a fill.
 (def %r5rs-char->str (fn (_ c) (Str8 make 1 c)))
 
 ; --- Characters --------------------------------------------------------------
@@ -260,20 +197,18 @@
 ; --- Conversions -------------------------------------------------------------
 (def string->symbol (fn (_ s) (%cvt s %symbol)))
 (def symbol->string (fn (_ s) (%cvt s %string)))
-; AN EMPTY LIST CONVERTS TO NIL, NOT "".  %convert-to answers nil for a nil
-; value by design -- absence stays absence -- but Scheme's (list->string '())
-; is the empty STRING, and every builder above it (string, string-map,
-; vector->string) inherits the difference.
+; An empty list converts to nil, not "": %convert-to answers nil for a nil
+; value by design, but Scheme's (list->string '()) is the empty string, and
+; every builder above (string, string-map, vector->string) inherits the
+; difference.
 (def list->string (fn (_ l) (if (null? l) "" (%cvt l %string))))
 (def number->string
   (fn (_ n . rest)
     (if (null? rest) (%cvt n %string) (%cvt n %string (first rest)))))
 
-; string->number: integer first, then float, #f on neither.  R5RS returns #f
-; for an unparseable string, and the platform's convert returns nil for a miss
-; -- two different spellings of "no", and the wrapper is where they meet.
-; The 2024 version reached for string->float and (make-instance %float ...);
-; both are in the tower the entry boots, so convert answers for them now.
+; string->number: integer first, then float, #f on neither. R5RS returns #f
+; for an unparseable string; the platform's convert returns nil for a miss, and
+; the wrapper is where the two spellings of "no" meet.
 (def string->number
   (fn (_ s . rest)
     (if (null? rest)
@@ -282,11 +217,11 @@
         (let ((%i (guard (_ ()) (%cvt s %int))))
           (if (null? %i)
             (let ((%f (guard (_ ()) (%cvt s %float))))
-              ; A ZERO FLOAT IS NOT PROOF OF A NUMBER.  The conversion runs
+              ; A zero float is not proof of a number: the conversion runs
               ; strtod, which answers 0 for "abc" as readily as for "0.0", so a
-              ; zero result only counts when the text actually begins with a
-              ; digit.  Without this (string->number "abc") is 0.0 -- truthy --
-              ; and R5RS's contract that a failure is #f quietly inverts.
+              ; zero result only counts when the text begins with a digit --
+              ; otherwise (string->number "abc") would be 0.0, truthy, and
+              ; R5RS's #f-on-failure contract would invert.
               (if (null? %f)
                 #f
                 (if (= %f 0)
@@ -339,9 +274,9 @@
 (def cddddr (fn (_ x) (rest (rest (rest (rest x))))))
 
 ; --- Numerics: the Num class, unwrapped -------------------------------------
-; All of these were bare globals in 2024 and are Num methods now.  The order
-; matches Scheme's here, so each is a straight forward.  min/max/gcd/lcm are
-; variadic in R5RS and binary on the class, hence the folds.
+; Num methods now; the order matches Scheme's, so each is a straight forward.
+; min/max/gcd/lcm are variadic in R5RS and binary on the class, hence the
+; folds.
 (def zero? (fn (_ n) (Num zero? n)))
 (def positive? (fn (_ n) (Num positive? n)))
 (def negative? (fn (_ n) (Num negative? n)))
@@ -397,9 +332,9 @@
 (def list->vector (fn (_ l) (Vector from-list l)))
 
 ; --- The numeric tower: Rational and Complex --------------------------------
-; Both were bare globals in 2024 and are classes now.  R5RS's spellings are
-; make-rectangular / real-part / imag-part; the class calls the constructor
-; `make`, which is the only name here that is not a straight forward.
+; Rational and Complex classes. R5RS's spellings are make-rectangular /
+; real-part / imag-part; the class constructor is `make`, the only name here
+; that is not a straight forward.
 (def make-rectangular (fn (_ re im) (Complex make re im)))
 (def real-part (fn (_ z) (Complex real-part z)))
 (def imag-part (fn (_ z) (Complex imag-part z)))
@@ -411,10 +346,9 @@
 (def rational? (fn (_ q) (Rational rational? q)))
 
 ; --- x-lang's own stdlib, reached through Scheme -----------------------------
-; 06-stdlib.spec.md tests the PLATFORM's functional vocabulary through this
-; surface rather than R5RS's -- fold, zip, range, compose -- which is a
-; reasonable thing for a personality's suite to assert: it is checking that the
-; host library is still reachable.  Every one of these moved onto a class.
+; 06-stdlib.spec.md tests the platform's functional vocabulary through this
+; surface -- fold, zip, range, compose -- checking that the host library is
+; still reachable. Every one of these moved onto a class.
 (def identity (fn (_ x) (Fn identity x)))
 (def compose (fn (_ . fs) (%r5rs-compose-all fs)))
 (def fold (fn (_ f init l) (List fold f init l)))
