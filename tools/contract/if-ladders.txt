@@ -5,8 +5,9 @@
 # `match` is the primitive for a decision with more than a couple of arms.
 #
 # THIS FILE WAS BORN EMPTY, which is a measurement rather than a boast.  The
-# 46 three-armed `if`s across r5rs/*.x are all chains of ONE link -- the
-# longest ladder in the bundle has two arms, and the threshold is four.  The
+# 46 three-armed `if`s across r5rs/*.x form 36 maximal chains, 26 of one link
+# and 10 of two -- the longest ladder in the bundle has two arms, and the
+# threshold is four.  The
 # reason is the shape of the bundle: it names Scheme's vocabulary in x and
 # leaves the decisions to r5rs/scm/*.scm, where `cond` is already the flat
 # form.

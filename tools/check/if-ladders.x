@@ -138,18 +138,41 @@
       (match ((pair? x) (%il-name (first x)))
              (#t        (%il-name x)))))
 
-  ; The name a ladder is reported under: the top-level binder it sits in, or a
-  ; PLACEHOLDER when it sits in none.  A bare top-level `if` is legal and this
-  ; family of bundles uses them -- a module that binds one way or the other
-  ; depending on what the platform under it offers -- and one must still
-  ; occupy a name field of its own, for the same reason the blank above was
-  ; a bug.  The placeholder carries no space, so the row stays three fields.
+  ; A ladder that sits in no binder is named for the CALL IT SITS IN, and only
+  ; falls back to a bare placeholder when there is no head to name it after.
+  ;
+  ; A placeholder alone was the first fix and it was too coarse.  It stopped
+  ; the blank field that slid the depth into the name, but every call site in
+  ; a file collapsed onto one key: x-python has 29 such chains, 25 of them in
+  ; python/types.x, which would have been ONE manifest row saying nothing
+  ; about which registration held the ladder.  The ratchet still caught
+  ; growth; a reader still had to go and find it.
+  ;
+  ; PARENTHESISED, so a call site can never collide with a definition.
+  ; `(%type-push-op)` is a ladder inside a call to %type-push-op; %type-push-op
+  ; is the function of that name.  A file may legitimately hold both.  No space
+  ; goes in either, so the row stays three fields.
+  (def %il-head-name
+    (fn (_ form)
+      (let ((h (%il-name (first form))))
+        (match ((str=? h "") "(top-level)")
+               (#t           (Str8 append "(" (Str8 append h ")")))))))
+
+  ; (def NAME ...) / (set! NAME ...) / (define NAME ...) and the curried
+  ; (define (NAME . args) body) -- a form that BINDS, and has something to bind.
+  (def %il-binding-form?
+    (fn (_ form)
+      (match ((not (pair? form))        #f)
+             ((not (pair? (rest form))) #f)
+             (#t (%il-binder? (first form))))))
+
+  ; The name a ladder is reported under: what the top-level form binds, else
+  ; what it calls, else the placeholder.
   (def %il-top-name
     (fn (_ form)
-      (match ((not (pair? form))               "(top-level)")
-             ((not (pair? (rest form)))        "(top-level)")
-             ((not (%il-binder? (first form))) "(top-level)")
-             (#t (%il-bound-name (first (rest form)))))))
+      (match ((%il-binding-form? form) (%il-bound-name (first (rest form))))
+             ((pair? form)             (%il-head-name form))
+             (#t                       "(top-level)"))))
 
   ; A SWEEP BETWEEN TOP-LEVEL FORMS.  Nothing here collects on its own, and a
   ; module of ten thousand lines is one long walk; without this the guard

@@ -190,7 +190,7 @@ primitive and the flat way to write a decision with more than a couple of arms;
 a chain of `if`s nested through their else branches says the same thing one
 indent deeper per arm. Four arms is the threshold, and
 `tools/contract/if-ladders.txt` is **empty**: the 46 three-armed `if`s in
-`r5rs/*.x` are all chains of one link, because this bundle names Scheme's
+`r5rs/*.x` form 36 chains, the longest of them two links, because this bundle names Scheme's
 vocabulary and leaves the decisions to `r5rs/scm/*.scm` where `cond` is already
 flat. The check is a ratchet in both directions — a new ladder is red, and so
 is a manifest row that has been outgrown but not lowered, so a fix cannot leave
