@@ -1,9 +1,9 @@
 #!/bin/sh
-# # x-r5rs -- R5RS Scheme on x-lang
+# # x-r5rs -- the R5RS lang for x-lang
 #
 # ## tests/spec-gate.sh -- the bundle's shim
 #
-# @description Sources the PLATFORM's spec gate; vendors nothing.
+# @description Sources the platform's spec gate; vendors nothing.
 # @author [Jon Ruttan](jonruttan@gmail.com)
 # @copyright 2026 Jon Ruttan
 # @license MIT No Attribution (MIT-0)
@@ -13,17 +13,11 @@
 #     (   )
 #      " "
 #
-# THE SAME RULING AS tools/check/release-refs.sh, and this file is the case
-# that proved it right: three bundles carried a byte-identical copy differing
-# only in the name on line 2, and the trap bug -- a killed suite that could
-# report SUCCESS -- had to be fixed in all three on the same day.  The kit's
-# copy (x-lang#564) is the one that keeps the fix; v0.10.0 is the first
-# release to carry it, which is the release this bundle pairs with.
-#
-# X_LANG_KIT names a checkout's tools/lang-kit directly -- what CI uses,
-# having checked x-lang out already; otherwise the kit is found where x says
-# its share tree is.  Unlike release-refs this gate RUNS the suite, so an x
-# is needed either way -- the fallback costs nothing extra.
+# The gate lives in the lang kit, not here: it is identical in every bundle, so
+# one shared copy (x-lang#564, from v0.10.0) saves an N-repo re-vendor for every
+# fix. X_LANG_KIT names a checkout's tools/lang-kit directly (what CI uses);
+# otherwise the kit is found where x says its share tree is. Unlike
+# release-refs this gate runs the suite, so an x is needed either way.
 set -e
 
 BUNDLE="$(cd "$(dirname "$0")/.." && pwd)"

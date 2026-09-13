@@ -1,23 +1,11 @@
-; --- Ports (R5RS §6.6) ---
+; --- Ports (R5RS 6.6) ---
 ;
-; A REWRITE, not a port.  The 2024 version of this file was 249 lines of
-; hand-rolled FFI: dlopen/dlsym against libc, ptr-call for open/close/read, and
-; obj-make to build a raw BUFFER object -- plus a hand-walked map of the base
-; object's internal tree to find the file table.  obj-make no longer exists at
-; all, not renamed but removed, and the rest are catalog entries now with a
-; different calling convention.
-;
-; None of that comes back.  The platform ships `File` (x/sys/file), which does
-; open/close/read/write/getc as syscalls with a collector that knows about the
-; buffers, and that is what this drives.  Nothing here reaches into the base
-; object's layout, so nothing here breaks when that layout moves again.
-;
-; AND THE DIALECT DOES NOT MOVE.  The old note here predicted that restoring
-; ports would take the bundle from (dialect xe) to rn, because dlopen is a
-; radon opt-in.  That was true of the dlopen implementation and is not true of
-; this one: r5rs/base.x reaches File with an explicit (import x/sys/file), and
-; a dialect decides what is PRELOADED rather than what is reachable.  Measured
-; both ways with ports loaded -- 667/16 under xe, 667/16 under rn.
+; Built on the platform's `File` (x/sys/file), which does open/close/read/
+; write/getc as syscalls with a collector that knows about the buffers.
+; Nothing here reaches into the base object's layout, so nothing breaks when
+; that layout moves. r5rs/base.x reaches File with an explicit import, so ports
+; do not move the bundle off (dialect xe): a dialect decides what is preloaded,
+; not what is reachable.
 
 ; --- The EOF object -------------------------------------------------------
 ;
@@ -112,14 +100,11 @@
     (let ((c (%src-getc (%port-fd p))))
       (if (char? c) c %eof-object))))
 
-; `read` parses the WHOLE remaining port on first use and hands the forms out
-; one at a time.  The alternative is reading character by character until a
-; datum closes, which means re-implementing the reader's bracket matching in
-; Scheme; the platform already has (tok read-str), and it takes text.
-;
-; The cost is honest and worth stating: a port is drained on the first read,
-; so `read` cannot be interleaved with `read-char` on the same port, and an
-; unterminated form at the end is dropped rather than reported.
+; `read` parses the whole remaining port on first use and hands the forms out
+; one at a time, using the platform's (tok read-str) rather than
+; re-implementing bracket matching in Scheme. The cost: a port is drained on
+; first read, so `read` cannot interleave with `read-char` on the same port,
+; and an unterminated form at the end is dropped rather than reported.
 (define %token-read-string (prim-ref 'tok 'read-str))
 
 (define (%port-slurp-chars p acc)
@@ -157,11 +142,11 @@
 
 ; --- Output sink ----------------------------------------------------------
 ;
-; NOTHING HERE SHADOWS display OR write.  The platform's printer emits through
+; Nothing here shadows display or write. The platform's printer emits through
 ; a swappable box -- (first %print-sink) is a fn of one string -- so
-; redirection and transcription are the same mechanism the printer already
-; uses for (io display-to-str).  Shadowing the verbs instead would mean
-; re-implementing every renderer they reach.
+; redirection and transcription reuse the mechanism the printer already uses
+; for (io display-to-str), rather than re-implementing every renderer the verbs
+; reach.
 ;
 ; Two boxes, consulted per emit rather than baked into a closure, so
 ; transcript-on can start recording in the middle of a redirect that is

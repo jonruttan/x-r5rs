@@ -1,14 +1,12 @@
-; lang.xon -- what this bundle IS.
+; lang.xon -- what this bundle is.
 ;
-; xon: read with the ordinary reader and never evaluated, like every other
-; manifest in the x-lang world (pin.xon, engine.pin.xon).  A form a reader
-; does not know is a loud error, never a skip -- a manifest that silently
-; ignores half of itself cannot be extended without wondering which readers
-; obeyed which half.
+; xon: read with the ordinary reader and never evaluated, like every manifest
+; in the x-lang world (pin.xon, engine.pin.xon). An unknown form is a loud
+; error, never a silent skip.
 ;
 ; FORMAT (one form per line):
 ;   (lang "NAME")               the -l name
-;   (dialect NAME)              he | xe | rn -- a REQUIREMENT, not a taste
+;   (dialect NAME)              he | xe | rn -- a requirement
 ;   (requires-release "TAG")    the x-lang this bundle was built against
 ;   (requires-lang "NAME" ["V"]) another lang this one is written on top
 ;                               of, optionally at an exact version
@@ -16,39 +14,13 @@
 
 (lang "r5rs")
 
-; XENON, derived from a measurement rather than a preference.  Scheme's numerics
-; ARE the tower: string->number falls back to %float, and 20-numeric-tower
-; exercises rationals and complexes.
-;
-; PORTS DID NOT MOVE IT, though the note in scm/ports.scm predicted they would.
-; That prediction was about the 2024 implementation, which used dlopen -- a
-; radon opt-in.  The rewrite drives File instead, and r5rs/base.x reaches it
-; with an explicit (import x/sys/file): a dialect decides what is PRELOADED,
-; not what is reachable, so importing a module the dialect skips is ordinary
-; rather than a violation.
-;
-; Measured both ways rather than reasoned about: 667/16 under xe and 667/16
-; under rn, with ports loaded in each.  The dialect row is a requirement, so it
-; should only move when something actually requires it to.
+; Xenon: Scheme's numerics are the tower. Ports are built on File, imported by
+; r5rs/base.x rather than preloaded, so they do not move the dialect to radon
+; -- a dialect decides what is preloaded, not what is reachable.
 (dialect xe)
 
-; PAIRING, NOT PINNING.  A digest freezes bytes; it says nothing about whether
-; those bytes still run against a platform that moved.  This row is the part
-; that is checkable, and it is compared for EQUALITY, never parsed.
-;
-; v0.6.0 was the first release carrying what this bundle needs: bundle
-; acquisition, `-l` loading, --share-dir answering from any cwd, and eval! in
-; the seam.  This row tracks what these specs are green AGAINST rather than the
-; floor -- the question it answers is "what was this built against", not "what
-; is the oldest that would still work".
-;
-; v0.9.0 CARRIES THE DECIMAL TOWER, and pairing with it took a change in the
-; SUITE rather than in this bundle.  x/num/decimal adds ~50M objects a load, and
-; the runner buckets up to SPEC_BATCH files into one process with no collection
-; between them -- so a bucket crossed the runaway ceiling and batches died
-; (667/34) without a line here being wrong.  CI runs SPEC_BATCH=1, one file per
-; process, and the suite is 667/0 against v0.9.0's ceiling.  Measured, not
-; assumed: forced to the same 300M limit at SPEC_BATCH=1, this suite is green.
+; The x-lang release this bundle is built and tested against; CI compares it
+; for equality.
 
 ; v0.14.0 IS THE FIRST RELEASE THIS SUITE CAN BOOT FROM AN IMAGE, and that is
 ; the whole of why this row moves.  tests/spec-runner.sh images the harness when

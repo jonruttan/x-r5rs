@@ -1,9 +1,9 @@
 #!/bin/sh
-# # x-r5rs -- R5RS Scheme on x-lang
+# # x-r5rs -- the R5RS lang for x-lang
 #
 # ## tools/check/release-refs.sh -- the bundle's shim
 #
-# @description Sources the PLATFORM's release-refs check; vendors nothing.
+# @description Sources the platform's release-refs check; vendors nothing.
 # @author [Jon Ruttan](jonruttan@gmail.com)
 # @copyright 2026 Jon Ruttan
 # @license MIT No Attribution (MIT-0)
@@ -13,17 +13,11 @@
 #     (   )
 #      " "
 #
-# THE SAME RULING AS tests/spec-runner.sh, and for the same reason: this check
-# is identical in every bundle, so a copy per repository buys nothing and costs
-# an N-repo re-vendor for every fix.  It was written twice before it moved to
-# the platform, and the second copy needed three fixes backported the day it
-# was written.
-#
-# TWO WAYS TO REACH THE KIT, because this check needs no platform to run.  It
-# reads lang.xon and greps the tree; forcing an x onto it would turn a
-# one-second text check into a build.  So X_LANG_KIT names a checkout's
-# tools/lang-kit directly -- what CI uses, having checked x-lang out already --
-# and everything else falls back to asking x where its share tree is.
+# The check lives in the lang kit, not here: it is identical in every bundle,
+# so one shared copy saves an N-repo re-vendor for every fix. It needs no
+# platform to run -- it reads lang.xon and greps the tree -- so X_LANG_KIT
+# names a checkout's tools/lang-kit directly (what CI uses), and otherwise it
+# asks x where its share tree is.
 set -e
 
 BUNDLE="$(cd "$(dirname "$0")/../.." && pwd)"

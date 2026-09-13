@@ -1,20 +1,7 @@
 name: Release
 
-# A TAG PUBLISHES A BUNDLE.  x-lang's Pin bundle fetches a tarball by URL and
-# verifies it against a sha256 the consumer's lang.pin.xon carries, so a
-# release is exactly two artifacts: the tarball, and the digest of it.
-#
-# THE SUITE RUNS FIRST.  A tag on a red tree publishes nothing -- the same
-# ruling x-lang's own release workflow follows.  A bundle whose specs fail is
-# not a release, it is a trap with a digest on it.
-#
-# RED MEANS "NOT WHAT WE RECORDED", not "not perfect".  The gate is
-# tests/spec-gate.sh, which compares the failing test NAMES against
-# tests/contract/known-failures.txt.  A bundle carrying documented debt can
-# therefore ship, and a bundle that acquired one new failure cannot -- which is
-# the distinction that matters at a release, and one a bare pass/fail count
-# cannot make.  Fixing a recorded failure without removing its line is also
-# red: the list may only shrink.
+# A v* tag publishes a release: the tarball and its sha256, which a consumer's
+# lang.pin.xon verifies. The suite runs first; a red tree publishes nothing.
 
 on:
   push:

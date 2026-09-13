@@ -7,45 +7,21 @@
 ;   1. R5RS do (iteration) — redefines x-lang's do (= begin)
 ;   2. Post-override patches for forms that used (lit do) for sequencing
 
-; --- do (R5RS iteration) ---
-;
 ; (do ((var init step) ...) (test expr ...) command ...)
 ;
-; DISPATCHED, NOT REBOUND, and this is the one place a personality cannot
-; simply re-mean a spelling.  x's `do` is its sequencing operative, and the
-; platform library resolves it BY NAME at run time from 275 call sites -- the
-; printer among them.  Rebind the global and the platform breaks underneath
-; you: (def do 5) makes the next write raise `Unbound SYMBOL '%print-tw`, and
-; (def do (op ...)) kills the top-level loop outright, silently.
+; Dispatched, not rebound: x's `do` is its sequencing operative, resolved by
+; name at run time from many platform call sites (the printer among them), so
+; rebinding the global breaks the platform underneath. R5RS iteration has a
+; shape nothing in x shares -- the first argument is a list of binding lists
+; (possibly empty, every element a pair) and the second a (test . results)
+; pair -- so `do` below dispatches on that shape and hands anything else to the
+; platform's own operative, captured as %r5rs-seq before this file loads.
 ;
-; So `do` below is a dispatcher.  R5RS iteration has a shape nothing in x
-; shares: the first argument is a LIST OF BINDING LISTS -- possibly empty, and
-; every element a pair -- and the second is a (test . results) pair.  Anything
-; else is sequencing and is handed to the platform's own operative, captured as
-; %r5rs-seq before this file loads.
-;
-; The heuristic is honest rather than airtight.  (do ((f x)) ((g y))) meant as
-; two calls is read as iteration; every real sequencing call -- (do (Sys dup2
-; 3 0) (Sys close 3)) -- has a non-pair in its first argument and routes
-; correctly.  x-lang#525 asks for the platform to stop late-binding the name.
-;
-;  ONE SUCH FORM DID EXIST, and this comment used to say that none did.
-; boot/reflect.x spelled (%image-recache!)'s hook walk as `(do ((first l))
-; (self (rest l)))` -- a list holding the single pair `(first l)`, then a
-; (test . results) pair -- which is iteration by the rule above, and exactly
-; the case named as hypothetical in the paragraph before this one.  Under this `do` the walk visited
-; every hook and CALLED NONE of them, and said nothing while doing it: the
-; hook call was read as a binding and the recursion as the test.
-;  What that cost is worth writing down, because none of it points here.  The
-; hooks are what a state image uses to remake the values it could not carry --
-; a dlopen handle, a JIT trampoline -- so a suite booted from an image ran
-; with every one of them still nil.  x-r5rs's 667 cases answered 107 of them
-; wrong, the first 34 saying `ffi-call s0->d: nil`: float.x's strtod, never
-; remade.  From source the hooks are never called at all, so the suite was
-; green and the bundle looked fine.  The platform now recurses first and calls
-; on the way out, which keeps a non-pair head and routes here as sequencing;
-; tests/spec-runner.sh probes for the old spelling and boots the suite from
-; source against a platform that still carries it.
+; The heuristic is a shape test, not airtight: a sequencing call with a
+; non-pair in its first argument routes correctly. x-lang#525 asks for the
+; platform to stop late-binding the name. tests/spec-runner.sh probes for an
+; older platform whose recache walk was itself spelled as an iteration `do`,
+; and boots the suite from source there.
 
 (define
   %r5rs-do-shape?
@@ -161,13 +137,11 @@
   case
   (op (key . clauses)
     e
-    ; LETREC, NOT SEQUENTIAL `def`s.  The 2024 body bound three helpers with
-    ; `def` inside this operative and relied on each being visible to the next.
-    ; That holds only at a particular frame depth: interpose one more frame --
-    ; which loading R7RS `guard` does -- and case-check-datums is unbound by the
-    ; time case-loop looks for it.  letrec binds through real parameters, so the
-    ; helpers see each other regardless of who called us.  (x-lang#527 is the
-    ; general form of this.)
+    ; letrec, not sequential `def`s: binding helpers with `def` inside this
+    ; operative and relying on each being visible to the next holds only at a
+    ; particular frame depth, and interposing a frame (as loading R7RS `guard`
+    ; does) leaves a helper unbound. letrec binds through real parameters, so
+    ; the helpers see each other regardless of the caller. (x-lang#527.)
     (let ((case-val (eval key e)))
       (letrec
         ((case-match?

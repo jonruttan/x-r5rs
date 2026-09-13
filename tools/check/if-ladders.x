@@ -15,25 +15,19 @@
 ;
 ;   sh x.sh --no-pin -q -f tools/check/if-ladders.x -- FILE...
 ;
-; Prints one "FILE NAME LENGTH" line per MAXIMAL ladder at or above the
+; Prints one "FILE NAME LENGTH" line per maximal ladder at or above the
 ; threshold, for tools/check/if-ladders.sh to aggregate per function and check
-; against the manifest in tools/contract/if-ladders.txt.
+; against tools/contract/if-ladders.txt.
 ;
-; WHY THIS IS A CHECK AT ALL.  `match` is an engine PRIMITIVE and the flat way
-; to write a decision with more than a couple of arms; a chain of `if`s nested
-; through their else branches says the same thing one indent deeper per arm,
-; and reads worse the longer it gets.  Every arm after the third is a reason to
-; use the primitive that exists for this.
+; `match` is an engine primitive and the flat way to write a decision with more
+; than a couple of arms; a chain of `if`s nested through their else branches
+; says the same thing one indent deeper per arm. This reads the file as
+; s-expressions (never evaluates it), because an `if` ladder is a shape a grep
+; cannot see. Symbol comparison is by name -- symbols intern per base.
 ;
-; STRUCTURAL, not a grep: an `if` ladder is a shape, and the shape is only
-; knowable by reading the file as s-expressions.  The file is parsed, never
-; evaluated.  Symbol comparison is by NAME -- symbols intern per base, so a
-; symbol read here is not eq? to one written here.
-;
-; THE .scm FILES ARE OUT OF SCOPE BY CONSTRUCTION, not by an exclusion list.
-; r5rs/base.x reaches them with `include-once` and this walker does not follow
-; an include -- it reads the file it is handed and nothing else.  Those files
-; are Scheme, where `cond` is the primitive and this shape is not the question.
+; The .scm files are out of scope: this walker reads the file it is handed and
+; does not follow includes, and those files are Scheme, where `cond` is the
+; primitive.
 
 (do
   (import x/sys/posix)
@@ -41,13 +35,10 @@
   (import x/codec/xon)
   (import x/tool/contract)
 
-  ; THE GUARD STAYS ON, and the walker is written to fit under it.  Removing
-  ; it to stop a truncated report only moved the failure: with no ceiling this
-  ; walk took a 7GB CI runner down, and the job came back "canceled" with no
-  ; error of its own.  What made it hungry was allocating a CLOSURE PER NODE
-  ; (a lambda handed to a list walker) in a runtime with no automatic GC --
-  ; so the walk below allocates none, and each top-level form is swept before
-  ; the next.
+  ; The guard stays on, and the walker is written to fit under it: it allocates
+  ; no closure per node (an earlier lambda-per-node walk exhausted a 7GB CI
+  ; runner in a runtime with no automatic GC), and each top-level form is swept
+  ; before the next.
   (Contract alloc-guard!)
 
   ; A ladder of this many arms or more is reported.  Three arms is an
@@ -85,10 +76,9 @@
             (self (List ref 3 f) file top))
         (%il-walk f file top))))
 
-  ; NO LAMBDA PER NODE: the two walkers call each other by name, so a tree of
-  ; a hundred thousand pairs allocates nothing but the walk itself.  The list
-  ; walk also survives an IMPROPER tail -- a parameter list is (a b . rest),
-  ; and List for-each would die on the dot.
+  ; No lambda per node: the two walkers call each other by name, so a tree of a
+  ; hundred thousand pairs allocates nothing but the walk. The list walk also
+  ; survives an improper tail -- a parameter list is (a b . rest).
   (def %il-walk-list ())
 
   (set! %il-walk
@@ -109,20 +99,12 @@
         (do (%il-walk (first form) file top)
             (self (rest form) file top)))))
 
-  ; THREE BINDERS, BECAUSE A BUNDLE IS WRITTEN IN TWO SURFACES.  A module
-  ; loaded BEFORE the Scheme vocabulary exists says `def`, which is every
-  ; module here today; one included AFTER it says `define`, in either the
-  ; plain or the curried spelling.  This bundle has no such module yet and
-  ; x-r7rs is seven-tenths of them, and the checker is one shape across the
-  ; two -- so `define` is handled here rather than waiting for the first
-  ; r5rs/ module that needs it to arrive with a silent hole under it.
-  ;
-  ; SILENT is the word: a checker that knew only `def` reported such a file's
-  ; ladders under an EMPTY name, which is worse than missing them.  The report
-  ; has three fields and the aggregate keys on the first two, so a blank middle
-  ; field slides the depth into the name and leaves the count empty.
-  ;
-  ; A match, not a chain -- this file should be able to pass itself.
+  ; Three binders, because a bundle is written in two surfaces: r5rs/base.x and
+  ; its neighbours load before the Scheme vocabulary exists and say `def`;
+  ; everything under r5rs/scm/ says `define`, in the plain and curried
+  ; spellings. A checker that knew only `def` would report those files' ladders
+  ; under an empty name -- the aggregate keys on the first two fields, so a
+  ; blank middle field slides the depth into the name.
   (def %il-binder?
     (fn (_ x)
       (let ((s (%il-name x)))
@@ -138,20 +120,14 @@
       (match ((pair? x) (%il-name (first x)))
              (#t        (%il-name x)))))
 
-  ; A ladder that sits in no binder is named for the CALL IT SITS IN, and only
-  ; falls back to a bare placeholder when there is no head to name it after.
+  ; A ladder that sits in no binder is named for the call it sits in, falling
+  ; back to a placeholder only when there is no head to name it after -- a bare
+  ; placeholder alone collapsed every call site in a file onto one key.
   ;
-  ; A placeholder alone was the first fix and it was too coarse.  It stopped
-  ; the blank field that slid the depth into the name, but every call site in
-  ; a file collapsed onto one key: x-python has 29 such chains, 25 of them in
-  ; python/types.x, which would have been ONE manifest row saying nothing
-  ; about which registration held the ladder.  The ratchet still caught
-  ; growth; a reader still had to go and find it.
-  ;
-  ; PARENTHESISED, so a call site can never collide with a definition.
-  ; `(%type-push-op)` is a ladder inside a call to %type-push-op; %type-push-op
-  ; is the function of that name.  A file may legitimately hold both.  No space
-  ; goes in either, so the row stays three fields.
+  ; Parenthesised, so a call site never collides with a definition: `(%foo)` is
+  ; a ladder inside a call to %foo, and %foo the function of that name may also
+  ; be defined in the same file. No space goes in either, so the row stays
+  ; three fields.
   (def %il-head-name
     (fn (_ form)
       (let ((h (%il-name (first form))))
@@ -174,9 +150,9 @@
              ((pair? form)             (%il-head-name form))
              (#t                       "(top-level)"))))
 
-  ; A SWEEP BETWEEN TOP-LEVEL FORMS.  Nothing here collects on its own, and a
-  ; module of ten thousand lines is one long walk; without this the guard
-  ; fires part way through the largest file and the report is a lie.
+  ; A sweep between top-level forms: nothing here collects on its own, and a
+  ; large module is one long walk, so without this the guard could fire part
+  ; way through the largest file.
   (def %il-file
     (fn (self forms file)
       (when (pair? forms)

@@ -162,21 +162,12 @@
     (fsqrt (if (float? x) x (exact->inexact x)))))
 ; --- The exact special cases of the transcendental functions ---------------
 ;
-; R5RS 6.2.5 says these "in general" return inexact results, and permits an
-; exact one where the argument is exact and the value is exactly representable.
-; `sqrt` above already takes that permission -- (sqrt 4) is 2, not 2.0 -- and
-; these are the same rule applied to the handful of arguments whose value is
-; exact by definition rather than by luck of the arithmetic.
-;
-; It matters for more than tidiness: the float path answers 0.0 where R5RS
-; programs branch on (= (sin 0) 0) and on exact?, and it makes an exact
-; computation go inexact at the first trig call and stay there.
-;
-; ONLY WHERE THE MATHEMATICS IS EXACT, never where the float merely looks
-; round.  sin 0 is exactly 0 and cos 0 exactly 1; sin of any other exact
-; argument is irrational.  (log (exp 1)) is NOT in this set -- (exp 1) is
-; inexact, and an inexact argument must give an inexact result whatever the
-; digits come out as.
+; R5RS 6.2.5 permits an exact result where the argument is exact and the value
+; is exactly representable. sin 0 is exactly 0 and cos 0 exactly 1; these apply
+; that rule to the arguments whose value is exact by definition rather than by
+; luck of the arithmetic -- it matters because programs branch on
+; (= (sin 0) 0) and on exact?. Only where the mathematics is exact:
+; (log (exp 1)) is not in the set, since (exp 1) is inexact.
 (define (%exact-int? x) (and (%int-number? x) (exact? x)))
 
 (define
