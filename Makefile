@@ -59,8 +59,17 @@ test: ## Run the spec suite (every failure is loud)
 	X="$(X)" sh tests/spec-runner.sh
 
 .PHONY: check
-check: check-release-refs check-if-ladders ## Run the suite against tests/contract/known-failures.txt -- what CI gates on
+check: lint check-release-refs check-if-ladders ## Run the suite against tests/contract/known-failures.txt -- what CI gates on
 	X="$(X)" sh tests/spec-gate.sh
+
+# EVERY RULE THE LINTER KNOWS, not just the one this bundle kept locally.
+# check-if-ladders below is a single rule with its own ratchet file, written
+# here because the platform sweep that knows it could not be pointed at a
+# bundle; that sweep can be now.  Both stay: they disagree about nothing
+# today, and the day they do is worth hearing about.
+.PHONY: lint
+lint: ## Lint the bundle's own sources -- structural rules gated
+	X="$(X)" sh tests/lint.sh
 
 # Seconds, and no platform needed: it reads lang.xon and greps the tree.  It
 # rides `check` rather than a tier of its own because the thing it catches --

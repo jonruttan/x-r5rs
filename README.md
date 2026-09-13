@@ -160,6 +160,7 @@ Run the specs against any x-lang checkout or install:
 ```bash
 X=/path/to/x-lang/x.sh make test    # the suite -- every failure is loud
 X=/path/to/x-lang/x.sh make check   # the suite against the contract, which CI gates on
+X=/path/to/x-lang/x.sh make lint    # the bundle's own sources, through x-lang's linter
 make check-release-refs             # the declared x-lang release is named in one place
 X=/path/to/x-lang/x.sh make check-if-ladders   # no new nested-if ladders
 make bundle                         # roll a release tarball and print its pin
@@ -196,6 +197,28 @@ flat. The check is a ratchet in both directions — a new ladder is red, and so
 is a manifest row that has been outgrown but not lowered, so a fix cannot leave
 the file behind as a record of things that are fine.
 
+`make lint` is the newest of them, and it is why the paragraph above is worth
+re-reading: the ladder rule the checker above implements is one the *platform's*
+linter has known all along, and this bundle kept a local copy only because
+x-lang's `make lint-x` swept `lib/` and `apps/` and nothing else. The lang kit
+can be pointed at a bundle now, so `tests/lint.sh` shims onto it — vendoring
+nothing — and brings every other rule with it. Both gates stay: they agree
+today, and the day they disagree is worth hearing about.
+
+It **skips itself** on an x whose linter predates x-lang#686/#687, which is
+every release up to and including v0.14.0, and says so rather than failing —
+a release is not this bundle's cadence to set. `--strict` is on, so the
+structural rules (`ladder`, `ladder-dict`, `shape`) fail the run; the bundle is
+clean on all three, which is the moment to lock them in.
+
+One caveat worth knowing before trusting it: the linter's `Undefined` rule is
+currently **dead in this bundle** — a planted undefined name is not reported,
+though the same plant is reported with no bundle preload and in x-krn. The
+structural rules do fire, which is what `--strict` gates on, so the gate earns
+its place; it just is not yet the undefined-name check it looks like.
+[x-lang#690](https://github.com/jonruttan/x-lang/issues/690) has the
+reproduction.
+
 The release tarball is byte-reproducible: it is built from the tag with
 `git archive` and a timestamp-free gzip, so two people rolling one tag get one
 digest. Pushing a `v*` tag runs the suite and, only if it is green, publishes
@@ -212,6 +235,7 @@ r5rs/printer.x         Scheme's `write`, which is not x's
 r5rs/base.x            assembles the parts
 r5rs/scm/*.scm         the library, in Scheme
 tests/spec-runner.sh   sources the platform's shared runner
+tests/lint.sh          shims onto the lang kit's linter -- vendors nothing
 tests/specs/*.spec.md  the suite, as literate markdown
 tests/contract/        the recorded debt CI gates on -- empty, and saying so
 tools/bundle.sh        rolls a release tarball and prints its pin
@@ -219,7 +243,7 @@ tools/check/           the gates: release-refs from x-lang's lang kit, and the
                        if-ladder linter, which is x because a ladder is a shape
 tools/contract/        the recorded if-ladder debt -- empty, and saying so
 scripts/               2024 harnesses, superseded by tests/ -- kept, not wired up
-Makefile               install / uninstall / test / check / bundle
+Makefile               install / uninstall / lint / test / check / bundle
 ```
 
 No file here carries a path literal, `run.x` included — x.sh boots the dialect

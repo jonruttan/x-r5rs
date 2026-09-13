@@ -82,6 +82,18 @@ jobs:
           make             # x-bin at the repo root -- `make engine` does not build it
           make boot        # the launcher-free amalgams the harness loads
 
+      # The bundle's own sources, through the platform's linter -- the sweep a
+      # lang under languages/ used to fall outside of entirely.  Ahead of the
+      # specs because it is a minute against their half hour, and a bundle that
+      # cannot be READ is not worth running.
+      #
+      # It SKIPS itself on an x whose linter predates x-lang#686/#687, which is
+      # every release up to and including v0.14.0 -- tests/lint.sh says why. So
+      # the pinned leg is quiet until its pin moves, and the main leg gates from
+      # the day those land.
+      - name: Lint the bundle
+        run: X="$PWD/.x-lang/x.sh" sh tests/lint.sh
+
       # THE GATE IS spec-gate, NOT spec-runner.  The runner exits non-zero on
       # any failure, which is right at a prompt and wrong here: this bundle
       # carries documented debt (the ellipsis group), so the raw runner makes
