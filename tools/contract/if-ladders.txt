@@ -1,0 +1,16 @@
+# if-ladders.txt -- the nested-if debt, and it is EMPTY
+#
+# One row per function: FILE NAME COUNT LONGEST, where COUNT is how many
+# MAXIMAL ladders of four arms or more it holds and LONGEST is the deepest.
+# `match` is the primitive for a decision with more than a couple of arms.
+#
+# THIS FILE WAS BORN EMPTY, which is a measurement rather than a boast.  The
+# 46 three-armed `if`s across r5rs/*.x are all chains of ONE link -- the
+# longest ladder in the bundle has two arms, and the threshold is four.  The
+# reason is the shape of the bundle: it names Scheme's vocabulary in x and
+# leaves the decisions to r5rs/scm/*.scm, where `cond` is already the flat
+# form.
+#
+# tools/check/if-ladders.sh fails on a new row, so the emptiness is the RULE
+# rather than a target -- adding one means writing it here on purpose, and
+# explaining why in review.
