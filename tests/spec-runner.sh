@@ -128,7 +128,23 @@ else
 	if [ -f "$_builder" ]; then
 		# The trees the harness armed, in the order it armed them.
 		_keys=$(sed -n 's/^(import-path! "\(.*\)")$/\1/p' "$LANG_LIB")
-		if X_BIN="$X_BIN" sh "$_builder" "$LANG_LIB" "$BUNDLE/tests/lib/.images" $_keys; then
+		#  .scm IS PART OF THIS BUNDLE'S SOURCE, AND THE KEY HAS TO SAY SO.
+		# image-build.sh keys a KEY-PATH by EXTENSION, and its default names .x
+		# alone -- while NINE of this lang's files are .scm: derived, equiv,
+		# list, char, string, numeric, control, ports, macro.  They ARE the R5RS
+		# library.  Left out of the key, editing one changes nothing the builder
+		# hashes: it answers "is current", and the suite goes on testing the
+		# library that was there BEFORE while its from-source control tests the
+		# one on disk.  Both legs green, at two different libraries, and no diff
+		# shows it -- the quietest failure this wiring can have, and the reason
+		# it is armed here rather than left to be noticed.
+		#  IMG_KEY_EXT is the platform's door for saying so (x-lang v0.14.0):
+		# the caller that arms a tree is the only thing that can know what its
+		# modules are spelled in, so the platform carries no lang's vocabulary.
+		# An older builder ignores the variable and keys .x alone, which is what
+		# this bundle did before -- so this neither breaks nor silently helps on
+		# a platform that predates it.
+		if IMG_KEY_EXT="x scm" X_BIN="$X_BIN" sh "$_builder" "$LANG_LIB" "$BUNDLE/tests/lib/.images" $_keys; then
 			X_IMG_DIR="$BUNDLE/tests/lib/.images"; export X_IMG_DIR
 		else
 			echo "x-r5rs: no state image (image-build exit $?) -- the suite boots from source" >&2
