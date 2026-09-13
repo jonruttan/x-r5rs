@@ -50,6 +50,38 @@
 ; process, and the suite is 667/0 against v0.9.0's ceiling.  Measured, not
 ; assumed: forced to the same 300M limit at SPEC_BATCH=1, this suite is green.
 
-(requires-release "v0.10.0")
+; v0.14.0 IS THE FIRST RELEASE THIS SUITE CAN BOOT FROM AN IMAGE, and that is
+; the whole of why this row moves.  tests/spec-runner.sh images the harness when
+; the platform can write one and boots from source when it cannot; two platform
+; defects made "cannot" the answer on every release before this one, and each
+; failed in a way that named nothing near itself.
+;
+;   x-lang#643.  (%image-recache!) walked its hook list with a `do` whose first
+;   operand is a LIST OF PAIRS -- which this bundle's own `do` has to read as
+;   R5RS iteration, since scm/derived.scm dispatches on shape.  So the walk
+;   visited every hook and CALLED NONE, in silence: every value the writer had
+;   nil'd as a transient stayed nil, and an image-booted suite answered 107 of
+;   667 wrong, the first 34 saying `ffi-call s0->d: nil` -- float.x's strtod,
+;   never remade.  From source the hooks are never called at all, which is why
+;   the suite was green on both sides of it.
+;
+;   x-lang#651.  float.x closed over the dlsym result for each libm entry, so a
+;   raw address sat inside each closure's frame -- where the transient rule
+;   cannot reach it, because %image-transients names GLOBALS.  The writer
+;   refused with `unnameable: 16`.  ON LINUX ONLY: glibc keeps a dlopen'd libm
+;   out of the global scope, where macOS's libSystem folds it in, so the same
+;   words that have no name under glibc resolve and are named there.  A clean
+;   `unnameable: 0` on a mac was that bug passing quietly, not its absence.
+;
+; MEASURED against v0.14.0, whole suite, this bundle at the commit that moves
+; this row, each a full run:
+;
+;   from source (IMG=0 SPEC_BATCH=1)   667/0   4m40s
+;   from the image                     667/0     45s
+;
+; The probes in tests/spec-runner.sh stay, and are not redundant with this row:
+; they test for the DEFECTS rather than for a version, so a platform that has
+; neither fix still boots from source and says which one it lacks.
+(requires-release "v0.14.0")
 
 (entry "run.x")

@@ -43,7 +43,8 @@ fi
 
 [ -f "$KIT/spec-gate.sh" ] || {
 	echo "x-r5rs: no spec-gate.sh under $KIT" >&2
-	echo "  The lang kit ships it as of x-lang v0.10.0; this bundle declares which release." >&2
+	# v0.10.0 below is when the kit first shipped this, not the pairing.
+	echo "  The lang kit ships it as of x-lang v0.10.0; this bundle declares which release." >&2  # release-ref: history
 	exit 1
 }
 

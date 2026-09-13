@@ -350,7 +350,7 @@
 ; (IMG=0 SPEC_BATCH=1), each row a full run:
 ;
 ;   platform                        engine   before   after
-;   x-lang v0.10.0 (this pairing)   v0.1.6   667/0    667/0
+;   x-lang v0.10.0                  v0.1.6   667/0    667/0   (release-ref: history)
 ;   x-lang main 6c0ab5c5            v0.2.8   667/24   667/2
 ;
 ; So: no movement on the release this bundle declares, and 24 -> 2 on main.
@@ -439,7 +439,7 @@
 ; conversion above:
 ;
 ;   platform          engine   before   after
-;   x-lang v0.10.0    v0.1.6   667/0    667/0
+;   x-lang v0.10.0    v0.1.6   667/0    667/0   (release-ref: history)
 ;   x-lang v0.13.0    v0.2.8   667/2    667/0   (release-ref: history)
 ;   x-lang main       v0.2.8   667/2    667/0   (release-ref: history)
 
