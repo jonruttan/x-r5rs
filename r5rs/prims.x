@@ -12,6 +12,16 @@
 ; references are fetched with prim-ref. Named once here so the .scm files stay
 ; Scheme and the next platform rename is a one-file edit.
 
+; The type handles this bundle asks convert and the type prims for, fetched
+; by name through the platform's public door.  r5rs/aliases.x and
+; scm/numeric.scm read them too.
+(def %r5rs-int-type (Type named INTEGER))
+(def %r5rs-string-type (Type named STRING))
+(def %r5rs-symbol-type (Type named SYMBOL))
+(def %r5rs-char-type (Type named CHARACTER))
+(def %r5rs-float-type (Type named FLOAT))
+(def %r5rs-rational-type (Type named RATIONAL))
+
 (provide r5rs/prims make-type make-instance type? obj-ref obj-set!)
 
 ; --- The type system ---------------------------------------------------------
@@ -24,7 +34,7 @@
 (def make-type
   (fn (_ name handlers)
     (%type-make
-      (if (symbol? name) (%cvt-prim name %string) name)
+      (if (symbol? name) (%cvt-prim name %r5rs-string-type) name)
       handlers)))
 
 (def make-instance (prim-ref (lit type) (lit make-instance)))
