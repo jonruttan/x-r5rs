@@ -30,8 +30,9 @@
 
 ; convert is applicative in Scheme's world.  NO EXPLICIT RECEIVER: every call
 ; supplies the `_` slot implicitly, `apply` included, so passing one by hand
-; shifts every argument along -- (convert 'point %string) becomes
-; (%convert-to 'point %string) with val=() and answers nil rather than raising.
+; shifts every argument along -- (convert 'point %r5rs-string-type) becomes
+; (%convert-to 'point %r5rs-string-type) with val=() and answers nil rather
+; than raising.
 ; That silence is what makes it worth a comment: the first symptom was
 ; define-record-type failing 13 specs with `Str8 append: not a string`, three
 ; layers away.
@@ -178,14 +179,14 @@
 (def make-string
   (fn (_ n . rest) (Str8 make n (if (null? rest) #\space (first rest)))))
 
-; char->string is not a convert: (%cvt #\A %string) answers nil, since that
-; direction is not registered on the type, so this goes through Str8 make,
-; building a one-character string from a fill.
+; char->string is not a convert: (%cvt #\A %r5rs-string-type) answers nil,
+; since that direction is not registered on the type, so this goes through
+; Str8 make, building a one-character string from a fill.
 (def %r5rs-char->str (fn (_ c) (Str8 make 1 c)))
 
 ; --- Characters --------------------------------------------------------------
-(def char->integer (fn (_ c) (%cvt c %int)))
-(def integer->char (fn (_ n) (%cvt n %char)))
+(def char->integer (fn (_ c) (%cvt c %r5rs-int-type)))
+(def integer->char (fn (_ n) (%cvt n %r5rs-char-type)))
 (def char-upcase (fn (_ c) (Char upcase c)))
 (def char-downcase (fn (_ c) (Char downcase c)))
 (def char-alphabetic? (fn (_ c) (Char alphabetic? c)))
@@ -195,16 +196,18 @@
 (def char-lower-case? (fn (_ c) (Char lower-case? c)))
 
 ; --- Conversions -------------------------------------------------------------
-(def string->symbol (fn (_ s) (%cvt s %symbol)))
-(def symbol->string (fn (_ s) (%cvt s %string)))
+(def string->symbol (fn (_ s) (%cvt s %r5rs-symbol-type)))
+(def symbol->string (fn (_ s) (%cvt s %r5rs-string-type)))
 ; An empty list converts to nil, not "": %convert-to answers nil for a nil
 ; value by design, but Scheme's (list->string '()) is the empty string, and
 ; every builder above (string, string-map, vector->string) inherits the
 ; difference.
-(def list->string (fn (_ l) (if (null? l) "" (%cvt l %string))))
+(def list->string (fn (_ l) (if (null? l) "" (%cvt l %r5rs-string-type))))
 (def number->string
   (fn (_ n . rest)
-    (if (null? rest) (%cvt n %string) (%cvt n %string (first rest)))))
+    (if (null? rest)
+      (%cvt n %r5rs-string-type)
+      (%cvt n %r5rs-string-type (first rest)))))
 
 ; string->number: integer first, then float, #f on neither. R5RS returns #f
 ; for an unparseable string; the platform's convert returns nil for a miss, and
@@ -214,9 +217,9 @@
     (if (null? rest)
       (if (= (Str8 length s) 0)
         #f
-        (let ((%i (guard (_ ()) (%cvt s %int))))
+        (let ((%i (guard (_ ()) (%cvt s %r5rs-int-type))))
           (if (null? %i)
-            (let ((%f (guard (_ ()) (%cvt s %float))))
+            (let ((%f (guard (_ ()) (%cvt s %r5rs-float-type))))
               ; A zero float is not proof of a number: the conversion runs
               ; strtod, which answers 0 for "abc" as readily as for "0.0", so a
               ; zero result only counts when the text begins with a digit --
@@ -228,14 +231,14 @@
                   (if (%r5rs-digit-start? s) %f #f)
                   %f)))
             %i)))
-      (let ((%r (guard (_ ()) (%cvt s %int (first rest)))))
+      (let ((%r (guard (_ ()) (%cvt s %r5rs-int-type (first rest)))))
         (if (null? %r) #f %r)))))
 
 (def %r5rs-digit-start?
   (fn (_ s)
     (if (= (Str8 length s) 0)
       #f
-      (let ((%c (%cvt (Str8 ref 0 s) %int)))
+      (let ((%c (%cvt (Str8 ref 0 s) %r5rs-int-type)))
         (if (< %c 48) #f (if (> %c 57) #f #t))))))
 
 (def write-char (fn (_ c) (display (%r5rs-char->str c))))
@@ -297,9 +300,13 @@
 ; --- Exactness ---------------------------------------------------------------
 ; R5RS's exact/inexact axis is x's INT/FLOAT split.  convert is the door both
 ; ways; `truncate` is what R5RS asks for on the inexact->exact direction.
-(def float? (fn (_ n) (%float? n)))
-(def exact->inexact (fn (_ n) (%cvt n %float)))
-(def inexact->exact (fn (_ n) (%cvt n %int)))
+(def float? (fn (_ n) (Float float? n)))
+; A rational instance and nothing else: (Rational rational?) also answers #t
+; for an integer, and numerator and denominator in scm/numeric.scm read the
+; instance, so they need the narrower test.
+(def %r5rs-rat? (fn (_ x) (Type ? x %r5rs-rational-type)))
+(def exact->inexact (fn (_ n) (%cvt n %r5rs-float-type)))
+(def inexact->exact (fn (_ n) (%cvt n %r5rs-int-type)))
 
 ; --- Strings: the comparisons ------------------------------------------------
 ; str=? and str? survived as bare globals; the ordering comparisons did not, so
@@ -317,8 +324,8 @@
       (if (= (Str8 length b) 0) 0 (- 0 1))
       (if (= (Str8 length b) 0)
         1
-        (let ((%ca (%cvt (Str8 ref 0 a) %int))
-              (%cb (%cvt (Str8 ref 0 b) %int)))
+        (let ((%ca (%cvt (Str8 ref 0 a) %r5rs-int-type))
+              (%cb (%cvt (Str8 ref 0 b) %r5rs-int-type)))
           (if (< %ca %cb)
             (- 0 1)
             (if (> %ca %cb)
@@ -374,28 +381,30 @@
         (first fs)
         (Fn compose (first fs) (self (rest fs)))))))
 
-; --- Float math: the FFI wrappers, %-privatised -----------------------------
-; These were bare globals in lib/x/float.x and are %-prefixed in
-; lib/x/num/float.x now.  A plain alias is correct -- the % names take the
-; receiver every % name takes, and the call site supplies it.
-(def fsqrt %fsqrt)
-(def fsin %fsin)
-(def fcos %fcos)
-(def ftan %ftan)
-(def fexp %fexp)
-(def flog %flog)
-(def fpow %fpow)
-(def fabs %fabs)
-(def fceil %fceil)
-(def ffloor %ffloor)
-(def ftrunc %ftrunc)
-(def frint %frint)
-(def fatan %fatan)
-(def fatan2 %fatan2)
-(def fasin %fasin)
-(def facos %facos)
-(def float->string %float->str)
-(def string->float %str->float)
+; --- Float math: the Float class's methods under their libm names ------------
+; x/num/float is a scoped module, so its functions are reached through the
+; Float class.  Each alias takes and answers float values, except the last
+; two, which work on the IEEE 754 bit pattern a float instance carries:
+; float->string takes the bits and string->float answers them, and
+; scm/numeric.scm unwraps and wraps the instance around the call.
+(def fsqrt (method-ref Float sqrt))
+(def fsin (method-ref Float sin))
+(def fcos (method-ref Float cos))
+(def ftan (method-ref Float tan))
+(def fexp (method-ref Float exp))
+(def flog (method-ref Float log))
+(def fpow (method-ref Float pow))
+(def fabs (method-ref Float abs))
+(def fceil (method-ref Float ceil))
+(def ffloor (method-ref Float floor))
+(def ftrunc (method-ref Float trunc))
+(def frint (method-ref Float rint))
+(def fatan (method-ref Float atan))
+(def fatan2 (method-ref Float atan2))
+(def fasin (method-ref Float asin))
+(def facos (method-ref Float acos))
+(def float->string (fn (_ bits) (Float bits->str bits)))
+(def string->float (fn (_ s) (Float str->bits s)))
 
 ; --- The rest of the functional stdlib --------------------------------------
 (def const (fn (_ x) (Fn const x)))

@@ -20,7 +20,7 @@
     ((%int-number? x) #t)
     ((float? x) (= x (ftrunc x)))
     (#t #f)))
-(define (exact? x) (if (%rat? x) #t (%int-number? x)))
+(define (exact? x) (if (%r5rs-rat? x) #t (%int-number? x)))
 (define (inexact? x) (float? x))
 (define (exact-integer? x) (%int-number? x))
 ; rational?, real?, complex?, number? already set by rational.x / complex.x
@@ -30,13 +30,13 @@
 (define
   (numerator x)
   (cond
-    ((%rat? x) (first (first x)))
+    ((%r5rs-rat? x) (first (first x)))
     ((%int-number? x) x)
     (#t (error "non-rational"))))
 (define
   (denominator x)
   (cond
-    ((%rat? x) (rest (first x)))
+    ((%r5rs-rat? x) (rest (first x)))
     ((%int-number? x) 1)
     (#t (error "non-rational"))))
 
@@ -265,7 +265,7 @@
                 ((char=? (string-ref s i) #\.) #t)
                 (#t (loop (+ i 1)))))))
       (if has-dot
-        (make-instance %float (string->float s))
+        (make-instance %r5rs-float-type (string->float s))
         (%int-string->number s)))
     (%int-string->number s (car radix))))
 

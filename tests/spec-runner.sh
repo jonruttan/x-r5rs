@@ -101,9 +101,10 @@ else
 		# one on disk.  Both legs green, at two different libraries, and no diff
 		# shows it -- the quietest failure this wiring can have, and the reason
 		# it is armed here rather than left to be noticed.
-		#  IMG_KEY_EXT is the platform's door for saying so (x-lang v0.14.0):
-		# the caller that arms a tree is the only thing that can know what its
-		# modules are spelled in, so the platform carries no lang's vocabulary.
+		#  IMG_KEY_EXT is the platform's door for saying so, there since
+		# x-lang v0.14.0 (release-ref: history): the caller that arms a tree is
+		# the only thing that can know what its modules are spelled in, so the
+		# platform carries no lang's vocabulary.
 		# An older builder ignores the variable and keys .x alone, which is what
 		# this bundle did before -- so this neither breaks nor silently helps on
 		# a platform that predates it.
