@@ -54,6 +54,6 @@
 ; The probes in tests/spec-runner.sh stay, and are not redundant with this row:
 ; they test for the DEFECTS rather than for a version, so a platform that has
 ; neither fix still boots from source and says which one it lacks.
-(requires-release "v0.14.0")
+(requires-release "v0.15.0")
 
 (entry "run.x")
