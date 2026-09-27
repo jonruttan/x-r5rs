@@ -311,7 +311,7 @@
 ; in the env at call time.
 
 ; define-syntax: both bindings go through %def-global, and the expansion
-; evaluates in the use site's env.
+; evaluates in a child of the use site's environment.
 ;
 ; The bindings: this once handed a (begin (def ...) ...) to a one-argument
 ; `eval` from inside an operative and relied on the bindings escaping to the
@@ -319,17 +319,16 @@
 ; `define` stopped using. %def-global takes def's top-level path
 ; unconditionally, whatever the frame depth.
 ;
-; The expansion: the generated op evaluates its expansion with `(eval <form>
-; %sr-env)` rather than `eval!`, so a `def` in the expansion (what a template's
-; `define` is rewritten into, to stay put) lands in the use site's env where
-; R5RS pitfall 3.2 wants it, not wherever the engine judged current.
+; The expansion: the generated op evaluates its expansion with
+; `(eval <form> (pair () %sr-env))`. An environment is a pair of bindings and
+; a parent, so (pair () %sr-env) is a new, empty child of the use site's
+; environment. The expansion reads and assigns the use site's variables
+; through the parent, and a `def` in the expansion (what a template's `define`
+; is rewritten into) binds in the child and goes with it, which is what R5RS
+; pitfall 3.2 asks for. Evaluated in %sr-env itself, the `def` would bind in
+; the use site's environment and stay there.
 ;
-; Not recorded in known-failures.txt: one contract serves both CI legs, and the
-; forms this fixes pass on the pinned leg, so recording them would redden the
-; pinned leg while silencing the main leg's early warning.
-;
-; letrec-syntax needs no change: it already passed the caller's environment to
-; `eval` explicitly.
+; let-syntax and letrec-syntax evaluate their expansions the same way.
 (define
   define-syntax
   (op (name transformer-expr)
@@ -351,22 +350,22 @@
             (list
               %ds-xfm-name
               (list (lit pair) (list (lit lit) name) (lit %sr-args)))
-            (lit %sr-env)))
+            (list (lit pair) () (lit %sr-env))))
         e))))
 
 ; let-syntax: local syntax bindings, one at a time, wrapping in let and
 ; recursing. %ls- prefixed params avoid shadowing by let*/let, which use the
 ; same names as op params under dynamic scope.
 ;
-; The expansion evaluates in the use site's frame, and the env is captured
-; before the transformer runs. Both %sr-env and the form are captured as
+; The expansion evaluates in a child of the use site's environment, as
+; define-syntax's does, and the env is captured before the transformer runs.
+; Both %sr-env and the form are captured as
 ; lambda arguments: arguments are evaluated before the body, so the capture
 ; happens before any transformer runs, and lambda params are lexical, so a
 ; nested let-syntax (pitfall 3.3) cannot reach them. Reading the env after the
 ; transformer call -- the shape define-syntax uses -- would use the wrong frame
 ; here, because op params are dynamically scoped and let-syntax nests;
 ; `eval!`, which names no env, leaked the definition to global instead.
-; letrec-syntax already passes the caller's environment explicitly.
 
 (define
   let-syntax
@@ -403,7 +402,7 @@
                           (list
                             %ls-xfm-name
                             (list (lit pair) (list (lit lit) %ls-name) (lit %ls-use-args)))
-                          (lit %ls-use-env)))
+                          (list (lit pair) () (lit %ls-use-env))))
                       (lit %sr-env)
                       (lit %sr-args)))))
               (pair (lit let-syntax) (pair (cdr %ls-bindings) %ls-body))))
@@ -449,7 +448,7 @@
                       (list
                         %lrs-xn
                         (list (lit pair) (list (lit lit) %lrs-n) (lit %sr-args)))
-                      (lit %sr-env))))
+                      (list (lit pair) () (lit %sr-env)))))
                 %lrs-let-bindings)))
           %lrs-bindings)
         (eval
