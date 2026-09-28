@@ -41,7 +41,7 @@
 (def type? (prim-ref (lit type) (lit ?)))
 
 ; --- Raw object slots --------------------------------------------------------
-; %-private in the platform, and they take the receiver the % names all take --
-; which the call site supplies, so a plain alias is correct.
-(def obj-ref %obj-ref)
-(def obj-set! %obj-set!)
+; Fetched from the catalog, like the type prims above.  They take the receiver
+; the platform's prims all take, which the call site supplies.
+(def obj-ref (prim-ref (lit obj) (lit ref)))
+(def obj-set! (prim-ref (lit obj) (lit set!)))
