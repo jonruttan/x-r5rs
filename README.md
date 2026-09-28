@@ -92,8 +92,8 @@ verifies it against a digest before unpacking. In the project's
 
 ```x
 (lang "r5rs")
-(release "v0.2.3")
-(bundle "sha256:…" "https://github.com/jonruttan/x-r5rs/releases/download/v0.2.3/x-r5rs-v0.2.3.tar.gz")
+(release "v0.2.4")
+(bundle "sha256:…" "https://github.com/jonruttan/x-r5rs/releases/download/v0.2.4/x-r5rs-v0.2.4.tar.gz")
 (source "https://github.com/jonruttan/x-r5rs.git")
 ```
 
@@ -102,7 +102,7 @@ Each release's notes carry this block with its digest, ready to paste. Then:
 ```x-repl
 > (import x/tool/pin)
 > (Pin bundle "deps/langs")
-"deps/langs/r5rs-v0.2.3"
+"deps/langs/r5rs-v0.2.4"
 ```
 
 `deps/langs/` is where `x -l` looks in a checkout; `X_LANG_DIR` overrides it.
@@ -115,7 +115,7 @@ the digest is what makes the version reproducible.
 does not satisfy that row — only an install or an unpacked release tarball
 carries the stamped `version` file it compares against, and that stamp is
 `git describe`, so an install from a checkout not exactly on the tag reads as
-`v0.2.3-1-gabc1234-dirty` and is refused by name. `--allow-lang-skew` is the
+`v0.2.4-1-gabc1234-dirty` and is refused by name. `--allow-lang-skew` is the
 way through while working on both at once.
 
 ## Running it
