@@ -24,7 +24,7 @@ shape instead). The terms are in x-lang's
 
 ## Status
 
-667 specs, all green against x-lang **v0.15.0**, the release `lang.xon`
+667 specs, all green against x-lang **v0.17.0**, the release `lang.xon`
 declares — about 1,500 lines of Scheme and 680 of x, across 27 spec files.
 
 [`tests/contract/known-failures.txt`](tests/contract/known-failures.txt) is
