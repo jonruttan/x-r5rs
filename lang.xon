@@ -30,7 +30,7 @@
 ;
 ;   x-lang#643.  (%image-recache!) walked its hook list with a `do` whose first
 ;   operand is a LIST OF PAIRS -- which this bundle's own `do` has to read as
-;   R5RS iteration, since scm/derived.scm dispatches on shape.  So the walk
+;   R5RS iteration, since scm/derived.scm dispatches on that pattern.  So the walk
 ;   visited every hook and CALLED NONE, in silence: every value the writer had
 ;   nil'd as a transient stayed nil, and an image-booted suite answered 107 of
 ;   667 wrong, the first 34 saying `ffi-call s0->d: nil` -- float.x's strtod,

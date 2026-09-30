@@ -55,14 +55,14 @@ check: check-release-refs check-if-ladders ## Run the suite against tests/contra
 	X="$(X)" sh tests/spec-gate.sh
 
 # Seconds, and no platform needed: it reads lang.xon and greps the tree.  It
-# rides `check` rather than a tier of its own because the thing it catches --
+# rides `check` instead of standing on its own because the thing it catches --
 # a README naming a release nobody tested -- ships silently otherwise.
 .PHONY: check-release-refs
 check-release-refs: ## Assert the declared x-lang release is named in one place
 	X="$(X)" sh tools/check/release-refs.sh
 
 # `match` is the primitive for a decision with arms; a nested-if chain is not.
-# It rides `check` for the same reason release-refs does -- the shape it
+# It rides `check` for the same reason release-refs does -- the depth it
 # catches is invisible in a diff that only shows the new arm.
 .PHONY: check-if-ladders
 check-if-ladders: ## Assert no new nested-if ladders (tools/contract/if-ladders.txt)

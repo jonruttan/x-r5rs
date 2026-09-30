@@ -31,14 +31,14 @@
 # is a function that should become a match, and the file may only get smaller.
 #
 # Set X to point at a particular x; otherwise the one on PATH is used.  The
-# checker itself is x -- an if ladder is a SHAPE, and reading the file as
-# s-expressions is the only way to see one.  A grep would count parens.
+# checker itself is x -- an if ladder has DEPTH, and reading the file as
+# s-expressions is the only way to see it.  A grep would count parens.
 #
 # NOT A GLOB, because a glob only sees one directory deep.  x-r7rs keeps half
-# its modules under r7rs/x/, and this check is one shape across the bundles;
+# its modules under r7rs/x/, and this check works the same way across the bundles;
 # `find` means a module directory that grows a subdirectory does not quietly
 # leave a hole in the gate.  The .scm sources beside them are Scheme -- `cond`
-# is the primitive there and this shape is not the question -- so only *.x is
+# is the primitive there and depth is not the question -- so only *.x is
 # fed in.
 set -e
 

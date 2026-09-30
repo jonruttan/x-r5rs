@@ -11,20 +11,20 @@
 ;
 ; Dispatched, not rebound: x's `do` is its sequencing operative, resolved by
 ; name at run time from many platform call sites (the printer among them), so
-; rebinding the global breaks the platform underneath. R5RS iteration has a
-; shape nothing in x shares -- the first argument is a list of binding lists
+; rebinding the global breaks the platform underneath. R5RS iteration has
+; a pattern nothing in x shares -- the first argument is a list of binding lists
 ; (possibly empty, every element a pair) and the second a (test . results)
-; pair -- so `do` below dispatches on that shape and hands anything else to the
+; pair -- so `do` below dispatches on that pattern and hands anything else to the
 ; platform's own operative, captured as %r5rs-seq before this file loads.
 ;
-; The heuristic is a shape test, not airtight: a sequencing call with a
+; The heuristic is a structural test, not airtight: a sequencing call with a
 ; non-pair in its first argument routes correctly. x-lang#525 asks for the
 ; platform to stop late-binding the name. tests/spec-runner.sh probes for an
 ; older platform whose recache walk was itself spelled as an iteration `do`,
 ; and boots the suite from source there.
 
 (define
-  %r5rs-do-shape?
+  %r5rs-do-structural?
   (lambda (forms)
     (if (null? forms) #f
       (if (null? (cdr forms)) #f
@@ -43,7 +43,7 @@
   do
   (op forms
     e
-    (if (%r5rs-do-shape? forms)
+    (if (%r5rs-do-structural? forms)
       (tail-eval (cons (lit %r5rs-do-iter) forms) e)
       (tail-eval (cons (lit %r5rs-seq) forms) e))))
 

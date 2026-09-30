@@ -8,7 +8,7 @@
 # 46 three-armed `if`s across r5rs/*.x form 36 maximal chains, 26 of one link
 # and 10 of two -- the longest ladder in the bundle has two arms, and the
 # threshold is four.  The
-# reason is the shape of the bundle: it names Scheme's vocabulary in x and
+# reason is that this bundle only names Scheme's vocabulary in x and
 # leaves the decisions to r5rs/scm/*.scm, where `cond` is already the flat
 # form.
 #

@@ -22,7 +22,7 @@
 ; `match` is an engine primitive and the flat way to write a decision with more
 ; than a couple of arms; a chain of `if`s nested through their else branches
 ; says the same thing one indent deeper per arm. This reads the file as
-; s-expressions (never evaluates it), because an `if` ladder is a shape a grep
+; s-expressions (never evaluates it), because an `if` ladder's depth is what a grep
 ; cannot see. Symbol comparison is by name -- symbols intern per base.
 ;
 ; The .scm files are out of scope: this walker reads the file it is handed and

@@ -363,7 +363,7 @@
 ; lambda arguments: arguments are evaluated before the body, so the capture
 ; happens before any transformer runs, and lambda params are lexical, so a
 ; nested let-syntax (pitfall 3.3) cannot reach them. Reading the env after the
-; transformer call -- the shape define-syntax uses -- would use the wrong frame
+; transformer call -- the pattern define-syntax uses -- would use the wrong frame
 ; here, because op params are dynamically scoped and let-syntax nests;
 ; `eval!`, which names no env, leaked the definition to global instead.
 
