@@ -76,16 +76,16 @@ else
 		echo "x-r5rs: platform images the JIT trampoline addresses (pre-41b93185) -- the suite boots from source" >&2
 		_builder=""
 	fi
-	# A platform whose recache walk is shaped like R5RS iteration cannot run a
+	# A platform whose recache walk is patterned like R5RS iteration cannot run a
 	# hook in this bundle: %image-recache! runs after the install, in the
 	# imaged lang's environment, and r5rs re-means `do` as iteration told apart
-	# from sequencing by shape, so a walk spelled that way visits every hook and
+	# from sequencing by that pattern, so a walk spelled that way visits every hook and
 	# calls none. Comments are stripped before the match, because the platform's
 	# fix quotes the broken spelling in its own note, so a probe must read only
 	# the code. A platform without the fix boots from source.
 	_reflect="$X_ROOT/lib/x/boot/reflect.x"
 	if [ -f "$_reflect" ] && sed 's/;.*//' "$_reflect" | grep -q 'do ((first l)) (self (rest l))'; then
-		echo "x-r5rs: platform's (%image-recache!) is shaped like R5RS iteration -- the suite boots from source" >&2
+		echo "x-r5rs: platform's (%image-recache!) is patterned like R5RS iteration -- the suite boots from source" >&2
 		_builder=""
 	fi
 	if [ -f "$_builder" ]; then

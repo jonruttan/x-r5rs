@@ -19,7 +19,7 @@ $ x -l r5rs
 x-r5rs is a **lang**: a surface syntax loaded over an x-lang dialect, so a
 spelling shared with x-lang can mean something different here — `lambda` is one
 such spelling, and `do` is the one this lang cannot claim (it dispatches on
-shape instead). The terms are in x-lang's
+that pattern instead). The terms are in x-lang's
 [lang contract](https://github.com/jonruttan/x-lang/blob/main/docs/lang-contract.md).
 
 ## Status
@@ -155,7 +155,7 @@ row in `lang.xon` from going stale; CI runs the declared release and x-lang
 `main`, so a platform change that breaks this bundle shows up as a red build.
 
 `make check-if-ladders` is the other gate, and it needs an `X`: the checker is
-itself x, because a nested-`if` ladder is a shape only visible by reading the
+itself x, because a nested-`if` ladder has depth only visible by reading the
 module as s-expressions. `match` is the flat way to write a decision with more
 than a couple of arms. Four arms is the threshold, and
 `tools/contract/if-ladders.txt` is empty — this bundle names Scheme's
@@ -182,7 +182,7 @@ tests/specs/*.spec.md  the suite, as literate markdown
 tests/contract/        the recorded debt CI gates on -- empty, and saying so
 tools/bundle.sh        rolls a release tarball and prints its pin
 tools/check/           the gates: release-refs from x-lang's lang kit, and the
-                       if-ladder linter, which is x because a ladder is a shape
+                       if-ladder linter, which is x because a ladder's depth is what a grep cannot see
 tools/contract/        the recorded if-ladder debt -- empty, and saying so
 scripts/               older harnesses, superseded by tests/ -- kept, not wired up
 Makefile               install / uninstall / test / check / bundle

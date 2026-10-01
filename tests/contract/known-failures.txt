@@ -30,8 +30,8 @@
 # It was recorded here as "not a patch waiting to be applied", on the reading
 # that Scheme's lexical rules are a lang's to impose above the engine.  That
 # reading was half right.  The engine did not adopt Scheme's rules -- it
-# stopped asserting one of its own: the dot had been a token KIND, scored on
-# sight beside the brackets, so any token BEGINNING with a dot was taken whole
+# stopped asserting one of its own: the dot had been one of the single-character
+# tokens, scored on sight beside the brackets, so any token BEGINNING with a dot was taken whole
 # as the separator.  x-engine-c v0.1.4 stopped claiming the character, and the
 # list reader now recognises the one-character symbol "." where it already
 # decides pair-versus-list.  Nothing in this bundle changed.

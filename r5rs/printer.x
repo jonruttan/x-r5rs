@@ -38,7 +38,7 @@
       (%seq (display "(") (%seq (%r5rs-write-items v) (display ")")))
       (if (symbol? v) (display v) (%x-write v)))))
 
-; The %repl-print shape: nil is the "no value" result and prints only the
+; The %repl-print contract: nil is the "no value" result and prints only the
 ; newline, matching lib/x/repl/loop.x.
 (def %r5rs-repl-print
   (fn (_ result)

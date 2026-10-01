@@ -28,7 +28,7 @@
 (def write %r5rs-write)
 
 ; --- The platform's sequencer, captured before Scheme's `do` shadows it -----
-; scm/derived.scm installs an R5RS `do` that dispatches on shape and hands
+; scm/derived.scm installs an R5RS `do` that dispatches on that pattern and hands
 ; everything that is not iteration back to this.  It has to be captured HERE,
 ; before that file loads, and it must never be re-captured afterwards.
 (def %r5rs-seq do)
@@ -41,14 +41,14 @@
 ; delay/force: a one-slot cell holding either the thunk or its value, with a
 ; second slot as the forced flag.  R5RS requires the expression run at most
 ; once, which is the whole content of the promise.
-(def %r5rs-promise-tag (list (lit %r5rs-promise)))
+(def %r5rs-promise-label (list (lit %r5rs-promise)))
 (def delay
   (op (expr)
     e
-    (list %r5rs-promise-tag (list 0) (eval (list (lit lambda) () expr) e))))
+    (list %r5rs-promise-label (list 0) (eval (list (lit lambda) () expr) e))))
 (def force
   (fn (_ p)
-    (if (if (pair? p) (eq? (first p) %r5rs-promise-tag) #f)
+    (if (if (pair? p) (eq? (first p) %r5rs-promise-label) #f)
       (do
         (if (= (first (first (rest p))) 0)
           (do

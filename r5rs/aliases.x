@@ -7,7 +7,7 @@
 ; @license MIT No Attribution (MIT-0)
 ;
 ; This is the one layer that names x-lang directly (everything else in the
-; bundle is Scheme written in Scheme), so it carries three kinds of adaptation:
+; bundle is Scheme written in Scheme), so it carries three techniques of adaptation:
 ;
 ;   1. %-privatised names. set-first! is %set-first!, and the % names take a
 ;      leading receiver supplied at the call site.
@@ -40,7 +40,7 @@
 
 ; --- The binding forms -------------------------------------------------------
 ; lambda: splice x's receiver into Scheme's formals. A dotted formal (a bare
-; symbol rather than a list) keeps its shape -- the receiver is spliced only
+; symbol rather than a list) keeps its layout -- the receiver is spliced only
 ; when there is a list to splice into, and a bare symbol becomes (_ . args).
 ; Interior defines are rewritten at construction time (the letrec* conversion
 ; Schemes use): a `define` in body position becomes a literal `def`, which

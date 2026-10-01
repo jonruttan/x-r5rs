@@ -22,7 +22,7 @@
 ;
 ; A list rather than a record because the predicates have to answer #f for
 ; ANY non-port without erroring: (input-port? 42) and (input-port? '()) are
-; both ordinary questions in R5RS, so the test is pair? first and tag second.
+; both ordinary questions in R5RS, so the test is pair? first and label second.
 ; The fourth slot is a one-element box holding either '%unread or the list of
 ; forms still to be handed out by `read`.  It is what makes repeated reads on
 ; one port return successive data rather than re-parsing from the top.
@@ -32,7 +32,7 @@
 ; fd; a %strsrc is a string with a cursor, which is what R7RS string ports
 ; (x-r7rs, scm/ports.scm) are built from.  Everything that reads goes through
 ; %src-getc, so a string port is the same port to every caller and nothing
-; downstream -- read-char, read, the slurp -- learns there are two kinds.
+; downstream -- read-char, read, the slurp -- learns there are two variants.
 ;
 ; Kept HERE rather than in the R7RS bundle because the representation is this
 ; file's: a constructor over there could not teach read-char about a source it
