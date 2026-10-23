@@ -16,11 +16,11 @@
 ; lang.xon declares, arms this bundle's root with import-path!, cats this file,
 ; and appends the launcher when no -f was given, so `import` below resolves
 ; against the bundle wherever it sits.
-(import r5rs/base)
+(import r5rs/base r5rs-version r5rs-repl-print)
 
 (set! %lang-name "R5RS Scheme")
 (set! %lang-version r5rs-version)
 (set! %repl-prompt "> ")
 ; Scheme prints Scheme results: (b c), not x's round-trippable ('b 'c).
 ; See r5rs/printer.x for why that is a re-meaning rather than a workaround.
-(set! %repl-print %r5rs-repl-print)
+(set! %repl-print r5rs-repl-print)

@@ -6,7 +6,7 @@
   (define  (fmt . head-1)  (scope . bind)    (branch . none))
   (lambda  (fmt . head-kw) (scope . params)  (branch . none))
   (let*    (fmt . head-1)  (scope . let)     (branch . none))
-  (letrec  (fmt . head-1)  (scope . let)     (branch . none))
+  (letrec  (fmt . head-1)  (scope . letrec)  (branch . none))
   (case    (fmt . head-1)  (scope . none)    (branch . clauses))
   (delay   (fmt . call)    (scope . none)    (branch . none))
   (quote   (fmt . call)    (scope . skip)    (branch . none))

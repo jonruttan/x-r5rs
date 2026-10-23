@@ -15,13 +15,18 @@
 ; a pattern nothing in x shares -- the first argument is a list of binding lists
 ; (possibly empty, every element a pair) and the second a (test . results)
 ; pair -- so `do` below dispatches on that pattern and hands anything else to the
-; platform's own operative, captured as %r5rs-seq before this file loads.
+; platform's own operative, captured as %r5rs-seq at the top of this file,
+; before `do` is rebound.  The capture lives here, in the root with the rest
+; of the vocabulary, because an included file runs in the root and not in
+; r5rs/base's own frame.
 ;
 ; The heuristic is a structural test, not airtight: a sequencing call with a
 ; non-pair in its first argument routes correctly. x-lang#525 asks for the
 ; platform to stop late-binding the name. tests/spec-runner.sh probes for an
 ; older platform whose recache walk was itself spelled as an iteration `do`,
 ; and boots the suite from source there.
+
+(define %r5rs-seq do)
 
 (define
   %r5rs-do-structural?

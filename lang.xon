@@ -15,7 +15,7 @@
 (lang "r5rs")
 
 ; Xenon: Scheme's numerics are the tower. Ports are built on File, imported by
-; r5rs/base.x rather than preloaded, so they do not move the dialect to radon
+; r5rs/scm/ports.scm rather than preloaded, so they do not move the dialect to radon
 ; -- a dialect decides what is preloaded, not what is reachable.
 (dialect xe)
 
