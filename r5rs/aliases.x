@@ -364,7 +364,6 @@
 (def fold-right (fn (_ f init l) (List fold-right f init l)))
 (def reduce (fn (_ f l) (List reduce f l)))
 (def range (fn (_ a b) (List range a b)))
-(def zip (fn (_ a b) (List zip a b)))
 (def any? (fn (_ pred l) (List any? pred l)))
 (def every? (fn (_ pred l) (List all? pred l)))
 (def take (fn (_ n l) (List take n l)))
