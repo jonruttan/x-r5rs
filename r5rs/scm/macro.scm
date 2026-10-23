@@ -282,13 +282,13 @@
 ; introduced identifier to its value (that is the hygiene mechanism), so an
 ; expanded definition arrives as (#<op> y 1), not (define y 1), and cannot be
 ; recognised afterwards. Here in the template the head is still the symbol
-; `define`, which %r5rs-def-form matches.
+; `define`, which r5rs-def-form matches.
 (define
   %sr-rewrite-clause
   (lambda (c)
     (if (pair? c)
       (if (pair? (cdr c))
-        (cons (car c) (cons (%r5rs-def-form (cadr c)) (cddr c)))
+        (cons (car c) (cons (r5rs-def-form (cadr c)) (cddr c)))
         c)
       c)))
 
@@ -310,13 +310,13 @@
 ; that calls it. The op is dynamically scoped so it finds the gensym
 ; in the env at call time.
 
-; define-syntax: both bindings go through %def-global, and the expansion
+; define-syntax: both bindings go through r5rs-def-global, and the expansion
 ; evaluates in a child of the use site's environment.
 ;
 ; The bindings: this once handed a (begin (def ...) ...) to a one-argument
 ; `eval` from inside an operative and relied on the bindings escaping to the
 ; caller by def's save-stack rule -- the same fragile trick r5rs/aliases.x's
-; `define` stopped using. %def-global takes def's top-level path
+; `define` stopped using. r5rs-def-global takes def's top-level path
 ; unconditionally, whatever the frame depth.
 ;
 ; The expansion: the generated op evaluates its expansion with
@@ -337,8 +337,8 @@
     (def %ds-xfm-name
       (string->symbol
         (string-append "%xfm-" (symbol->string name))))
-    (%def-global %ds-xfm-name %ds-xfm)
-    (%def-global
+    (r5rs-def-global %ds-xfm-name %ds-xfm)
+    (r5rs-def-global
       name
       (eval
         (list

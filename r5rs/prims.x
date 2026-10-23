@@ -15,14 +15,13 @@
 ; The type handles this bundle asks convert and the type prims for, fetched
 ; by name through the platform's public door.  r5rs/aliases.x and
 ; scm/numeric.scm read them too.
-(def %r5rs-int-type (Type named INTEGER))
-(def %r5rs-string-type (Type named STRING))
-(def %r5rs-symbol-type (Type named SYMBOL))
-(def %r5rs-char-type (Type named CHARACTER))
-(def %r5rs-float-type (Type named FLOAT))
-(def %r5rs-rational-type (Type named RATIONAL))
-
-(provide r5rs/prims make-type make-instance type? obj-ref obj-set!)
+(module r5rs/prims)
+(def r5rs-int-type (Type named INTEGER))
+(def r5rs-string-type (Type named STRING))
+(def r5rs-symbol-type (Type named SYMBOL))
+(def r5rs-char-type (Type named CHARACTER))
+(def r5rs-float-type (Type named FLOAT))
+(def r5rs-rational-type (Type named RATIONAL))
 
 ; --- The type system ---------------------------------------------------------
 ; make-type takes a string name; a symbol (which the .scm callers may pass) is
@@ -34,7 +33,7 @@
 (def make-type
   (fn (_ name handlers)
     (%type-make
-      (if (symbol? name) (%cvt-prim name %r5rs-string-type) name)
+      (if (symbol? name) (%cvt-prim name r5rs-string-type) name)
       handlers)))
 
 (def make-instance (prim-ref (lit type) (lit make-instance)))
@@ -45,3 +44,13 @@
 ; the platform's prims all take, which the call site supplies.
 (def obj-ref (prim-ref (lit obj) (lit ref)))
 (def obj-set! (prim-ref (lit obj) (lit set!)))
+
+; The record primitives are vocabulary: a Scheme program and x-r7rs's records
+; call them bare, so they are provided (global ...).  The type handles are
+; r5rs/aliases's own, except the float handle, which scm/numeric.scm reads
+; from the root.
+(provide r5rs/prims
+  (global make-type) (global make-instance) (global type?) (global obj-ref)
+  (global obj-set!) (global r5rs-float-type)
+  r5rs-char-type r5rs-int-type r5rs-rational-type r5rs-string-type
+  r5rs-symbol-type)

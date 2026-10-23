@@ -16,47 +16,24 @@
 ; come from the platform (lib/x/reader/lit-reader.x, quasi-reader.x), so ' and
 ; ` work without anything here.
 
+(module r5rs/base)
 (import r5rs/prims)
 (import r5rs/aliases)
-(import r5rs/printer)
-
-(provide r5rs/base r5rs-version %r5rs-repl-print)
+(import r5rs/printer r5rs-write r5rs-repl-print)
 
 (def r5rs-version "0.1.0")
 
 ; Scheme's `write`, installed. See r5rs/printer.x for why a lang rebinds it.
-(def write %r5rs-write)
-
-; --- The platform's sequencer, captured before Scheme's `do` shadows it -----
-; scm/derived.scm installs an R5RS `do` that dispatches on that pattern and hands
-; everything that is not iteration back to this.  It has to be captured HERE,
-; before that file loads, and it must never be re-captured afterwards.
-(def %r5rs-seq do)
+(def write r5rs-write)
 
 ; --- Forms the platform no longer supplies ---------------------------------
 ; let, letrec, named let, cond, case, when and unless are supplied by the
 ; platform; let* comes from derived.scm; delay/force are supplied nowhere, so
 ; Scheme brings its own.
 
-; delay/force: a one-slot cell holding either the thunk or its value, with a
-; second slot as the forced flag.  R5RS requires the expression run at most
-; once, which is the whole content of the promise.
-(def %r5rs-promise-label (list (lit %r5rs-promise)))
-(def delay
-  (op (expr)
-    e
-    (list %r5rs-promise-label (list 0) (eval (list (lit lambda) () expr) e))))
-(def force
-  (fn (_ p)
-    (if (if (pair? p) (eq? (first p) %r5rs-promise-label) #f)
-      (do
-        (if (= (first (first (rest p))) 0)
-          (do
-            (%set-first! (rest (rest p)) ((first (rest (rest p)))))
-            (%set-first! (first (rest p)) 1))
-          ())
-        (first (rest (rest p))))
-      p)))
+; delay is the platform's (x/type/promise owns the name, and provides it to
+; the root); force is its force, which passes a non-promise through.
+(def force (fn (_ p) (Promise force p)))
 
 ; --- The library, in dependency order ---------------------------------------
 ; equiv before list (memv needs eqv?), list before the rest, macro last: it
@@ -68,10 +45,7 @@
 (include-once "./scm/string.scm")
 (include-once "./scm/numeric.scm")
 (include-once "./scm/control.scm")
-; Ports, built on File and the platform's print sink. x/sys/file is opt-in in
-; every dialect, so it is imported here rather than assumed -- and because a
-; dialect decides what is preloaded, not what is reachable, ports do not drag
-; this bundle to radon; it stays on xe.
-(import x/sys/file)
 (include-once "./scm/ports.scm")
 (include-once "./scm/macro.scm")
+
+(provide r5rs/base r5rs-version r5rs-repl-print (global write) (global force))

@@ -55,6 +55,6 @@ cat > "$OUT" <<EOF
 (def %install-root "$X_ROOT")
 (include "$X_BASE")
 (import-path! "$BUNDLE")
-(import r5rs/base)
-(set! %repl-print %r5rs-repl-print)
+(import r5rs/base r5rs-repl-print)
+(set! %repl-print r5rs-repl-print)
 EOF

@@ -3,7 +3,7 @@
 ; Built on the platform's `File` (x/sys/file), which does open/close/read/
 ; write/getc as syscalls with a collector that knows about the buffers.
 ; Nothing here reaches into the base object's layout, so nothing breaks when
-; that layout moves. r5rs/base.x reaches File with an explicit import, so ports
+; that layout moves. This file reaches File with an explicit import, so ports
 ; do not move the bundle off (dialect xe): a dialect decides what is preloaded,
 ; not what is reachable.
 
@@ -13,6 +13,11 @@
 ; for it.  R5RS requires eof-object? to be false for every other datum, which
 ; rules out reusing '() or #f or -1 -- all three are things a port might
 ; legitimately yield.
+; File is not preloaded by every dialect, so it is imported here rather than
+; assumed -- and because a dialect decides what is preloaded, not what is
+; reachable, ports do not drag this bundle to radon; it stays on xe.
+(import x/sys/file)
+
 (define %eof-object (cons '%eof '()))
 (define (eof-object? x) (eq? x %eof-object))
 

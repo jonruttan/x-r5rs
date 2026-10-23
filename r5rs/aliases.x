@@ -22,16 +22,19 @@
 ; aliasing lambda to it would bind Scheme's first parameter to the receiver,
 ; and every .scm file here is written in lambda.
 
-(provide r5rs/aliases lambda define begin quote quasiquote)
-
 ; --- Catalog fetches ---------------------------------------------------------
+(module r5rs/aliases)
+(import r5rs/prims
+  r5rs-char-type r5rs-float-type r5rs-int-type r5rs-rational-type
+  r5rs-string-type r5rs-symbol-type)
+
 (def %cvt (prim-ref (lit convert) (lit to)))
 (def %prim-read (prim-ref (lit io) (lit read)))
 
 ; convert is applicative in Scheme's world.  NO EXPLICIT RECEIVER: every call
 ; supplies the `_` slot implicitly, `apply` included, so passing one by hand
-; shifts every argument along -- (convert 'point %r5rs-string-type) becomes
-; (%convert-to 'point %r5rs-string-type) with val=() and answers nil rather
+; shifts every argument along -- (convert 'point r5rs-string-type) becomes
+; (%convert-to 'point r5rs-string-type) with val=() and answers nil rather
 ; than raising.
 ; That silence is what makes it worth a comment: the first symptom was
 ; define-record-type failing 13 specs with `Str8 append: not a string`, three
@@ -46,7 +49,7 @@
 ; Schemes use): a `define` in body position becomes a literal `def`, which
 ; binds in the body's frame and is visible to the forms after it. One level
 ; deep -- exactly the forms that are the body.
-(def %r5rs-def-form
+(def r5rs-def-form
   (fn (_ form)
     (if (pair? form)
       (if (eq? (first form) (lit define))
@@ -63,7 +66,7 @@
   (fn (self body)
     (if (null? body)
       ()
-      (pair (%r5rs-def-form (first body)) (self (rest body))))))
+      (pair (r5rs-def-form (first body)) (self (rest body))))))
 
 (def lambda
   (op (formals . body)
@@ -87,7 +90,7 @@
 ; fallback is not frame-independent, so def-global is preferred where present.
 ; See x-lang#527.
 (def %dg-prim (prim-ref (lit base) (lit def-global)))
-(def %def-global
+(def r5rs-def-global
   (if (null? %dg-prim)
     (fn (_ n v) (eval! (list (lit def) n (list (lit lit) v))))
     (fn (_ n v) (%dg-prim n v))))
@@ -95,12 +98,11 @@
   (op (name-or-form . body)
     e
     (if (pair? name-or-form)
-      (%def-global
+      (r5rs-def-global
         (first name-or-form)
         (eval (pair (lit lambda) (pair (rest name-or-form) body)) e))
-      (%def-global name-or-form (eval (first body) e)))))
+      (r5rs-def-global name-or-form (eval (first body) e)))))
 
-(def begin do)
 (def quote lit)
 (def quasiquote quasi)
 (def else #t)
@@ -179,14 +181,14 @@
 (def make-string
   (fn (_ n . rest) (Str8 make n (if (null? rest) #\space (first rest)))))
 
-; char->string is not a convert: (%cvt #\A %r5rs-string-type) answers nil,
+; char->string is not a convert: (%cvt #\A r5rs-string-type) answers nil,
 ; since that direction is not registered on the type, so this goes through
 ; Str8 make, building a one-character string from a fill.
 (def %r5rs-char->str (fn (_ c) (Str8 make 1 c)))
 
 ; --- Characters --------------------------------------------------------------
-(def char->integer (fn (_ c) (%cvt c %r5rs-int-type)))
-(def integer->char (fn (_ n) (%cvt n %r5rs-char-type)))
+(def char->integer (fn (_ c) (%cvt c r5rs-int-type)))
+(def integer->char (fn (_ n) (%cvt n r5rs-char-type)))
 (def char-upcase (fn (_ c) (Char upcase c)))
 (def char-downcase (fn (_ c) (Char downcase c)))
 (def char-alphabetic? (fn (_ c) (Char alphabetic? c)))
@@ -196,18 +198,18 @@
 (def char-lower-case? (fn (_ c) (Char lower-case? c)))
 
 ; --- Conversions -------------------------------------------------------------
-(def string->symbol (fn (_ s) (%cvt s %r5rs-symbol-type)))
-(def symbol->string (fn (_ s) (%cvt s %r5rs-string-type)))
+(def string->symbol (fn (_ s) (%cvt s r5rs-symbol-type)))
+(def symbol->string (fn (_ s) (%cvt s r5rs-string-type)))
 ; An empty list converts to nil, not "": %convert-to answers nil for a nil
 ; value by design, but Scheme's (list->string '()) is the empty string, and
 ; every builder above (string, string-map, vector->string) inherits the
 ; difference.
-(def list->string (fn (_ l) (if (null? l) "" (%cvt l %r5rs-string-type))))
+(def list->string (fn (_ l) (if (null? l) "" (%cvt l r5rs-string-type))))
 (def number->string
   (fn (_ n . rest)
     (if (null? rest)
-      (%cvt n %r5rs-string-type)
-      (%cvt n %r5rs-string-type (first rest)))))
+      (%cvt n r5rs-string-type)
+      (%cvt n r5rs-string-type (first rest)))))
 
 ; string->number: integer first, then float, #f on neither. R5RS returns #f
 ; for an unparseable string; the platform's convert returns nil for a miss, and
@@ -217,9 +219,9 @@
     (if (null? rest)
       (if (= (Str8 length s) 0)
         #f
-        (let ((%i (guard (_ ()) (%cvt s %r5rs-int-type))))
+        (let ((%i (guard (_ ()) (%cvt s r5rs-int-type))))
           (if (null? %i)
-            (let ((%f (guard (_ ()) (%cvt s %r5rs-float-type))))
+            (let ((%f (guard (_ ()) (%cvt s r5rs-float-type))))
               ; A zero float is not proof of a number: the conversion runs
               ; strtod, which answers 0 for "abc" as readily as for "0.0", so a
               ; zero result only counts when the text begins with a digit --
@@ -231,14 +233,14 @@
                   (if (%r5rs-digit-start? s) %f #f)
                   %f)))
             %i)))
-      (let ((%r (guard (_ ()) (%cvt s %r5rs-int-type (first rest)))))
+      (let ((%r (guard (_ ()) (%cvt s r5rs-int-type (first rest)))))
         (if (null? %r) #f %r)))))
 
 (def %r5rs-digit-start?
   (fn (_ s)
     (if (= (Str8 length s) 0)
       #f
-      (let ((%c (%cvt (Str8 ref 0 s) %r5rs-int-type)))
+      (let ((%c (%cvt (Str8 ref 0 s) r5rs-int-type)))
         (if (< %c 48) #f (if (> %c 57) #f #t))))))
 
 (def write-char (fn (_ c) (display (%r5rs-char->str c))))
@@ -304,9 +306,9 @@
 ; A rational instance and nothing else: (Rational rational?) also answers #t
 ; for an integer, and numerator and denominator in scm/numeric.scm read the
 ; instance, so they need the narrower test.
-(def %r5rs-rat? (fn (_ x) (Type ? x %r5rs-rational-type)))
-(def exact->inexact (fn (_ n) (%cvt n %r5rs-float-type)))
-(def inexact->exact (fn (_ n) (%cvt n %r5rs-int-type)))
+(def r5rs-rat? (fn (_ x) (Type ? x r5rs-rational-type)))
+(def exact->inexact (fn (_ n) (%cvt n r5rs-float-type)))
+(def inexact->exact (fn (_ n) (%cvt n r5rs-int-type)))
 
 ; --- Strings: the comparisons ------------------------------------------------
 ; str=? and str? survived as bare globals; the ordering comparisons did not, so
@@ -324,8 +326,8 @@
       (if (= (Str8 length b) 0) 0 (- 0 1))
       (if (= (Str8 length b) 0)
         1
-        (let ((%ca (%cvt (Str8 ref 0 a) %r5rs-int-type))
-              (%cb (%cvt (Str8 ref 0 b) %r5rs-int-type)))
+        (let ((%ca (%cvt (Str8 ref 0 a) r5rs-int-type))
+              (%cb (%cvt (Str8 ref 0 b) r5rs-int-type)))
           (if (< %ca %cb)
             (- 0 1)
             (if (> %ca %cb)
@@ -419,3 +421,49 @@
 ; returns ((1 . 4) ...); the suite -- and every Scheme that has zip -- expects
 ; ((1 4) ...), so this goes through zip-with rather than zip.
 (def zip (fn (_ a b) (List zip-with (fn (_ x y) (list x y)) a b)))
+
+; Scheme's vocabulary is the root's: every name a program calls bare is
+; provided (global ...).  begin is the platform's own, which owns the name.
+; r5rs-def-global, r5rs-def-form and r5rs-rat? are helpers the .scm files
+; read, and those run in the root too.
+(provide r5rs/aliases
+  (global r5rs-def-global) (global r5rs-def-form) (global r5rs-rat?)
+  (global abs) (global angle) (global any?) (global append)
+  (global caaaar) (global caaadr) (global caaar) (global caadar)
+  (global caaddr) (global caadr) (global caar) (global cadaar)
+  (global cadadr) (global cadar) (global caddar) (global cadddr)
+  (global caddr) (global cadr) (global car) (global cdaaar)
+  (global cdaadr) (global cdaar) (global cdadar) (global cdaddr)
+  (global cdadr) (global cdar) (global cddaar) (global cddadr)
+  (global cddar) (global cdddar) (global cddddr) (global cdddr)
+  (global cddr) (global cdr) (global char->integer)
+  (global char-alphabetic?) (global char-downcase)
+  (global char-lower-case?) (global char-numeric?) (global char-upcase)
+  (global char-upper-case?) (global char-whitespace?) (global complement)
+  (global compose) (global cons) (global const) (global convert)
+  (global curry) (global define) (global denominator) (global drop)
+  (global else) (global even?) (global every?) (global exact->inexact)
+  (global expt) (global fabs) (global facos) (global fasin)
+  (global fatan) (global fatan2) (global fceil) (global fcos)
+  (global fexp) (global ffloor) (global filter) (global flatten)
+  (global flip) (global float->string) (global float?) (global flog)
+  (global fold) (global fold-right) (global for-each) (global fpow)
+  (global frint) (global fsin) (global fsqrt) (global ftan)
+  (global ftrunc) (global gcd) (global identity) (global imag-part)
+  (global inexact->exact) (global integer->char) (global lambda)
+  (global last) (global lcm) (global length) (global list->string)
+  (global list->vector) (global list-ref) (global list-tail)
+  (global magnitude) (global make-polar) (global make-rectangular)
+  (global make-string) (global make-vector) (global map) (global max)
+  (global min) (global modulo) (global negative?) (global number->string)
+  (global numerator) (global odd?) (global positive?) (global product)
+  (global quasiquote) (global quote) (global range) (global rational?)
+  (global real-part) (global reduce) (global reverse) (global set-car!)
+  (global set-cdr!) (global string->float) (global string->number)
+  (global string->symbol) (global string-append) (global string-copy)
+  (global string-length) (global string-ref) (global string<?)
+  (global string=?) (global string?) (global substring) (global sum)
+  (global symbol->string) (global take) (global vector)
+  (global vector->list) (global vector-length) (global vector-ref)
+  (global vector-set!) (global vector?) (global write-char)
+  (global zero?) (global zip))

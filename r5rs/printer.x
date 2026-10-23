@@ -12,17 +12,16 @@
 ; specs assert throughout, so `write` is rebound and the same writer backs
 ; %repl-print.
 
-(provide r5rs/printer %r5rs-write %r5rs-repl-print)
-
 ; Recursive descent, because only the symbol leaf differs from x's `write`;
 ; everything else delegates, so the lang inherits the platform's rendering and
 ; stays correct as new types arrive.
-(def %r5rs-write ())
+(module r5rs/printer)
+(def r5rs-write ())
 (def %x-write write)
 
 (def %r5rs-write-items
   (fn (_ v)
-    (%r5rs-write (first v))
+    (r5rs-write (first v))
     (if (null? (rest v))
       ()
       ; Proper tail: keep going.  Improper: the dotted spelling.  A printer
@@ -30,9 +29,9 @@
       ; substrate.
       (if (pair? (rest v))
         (%seq (display " ") (%r5rs-write-items (rest v)))
-        (%seq (display " . ") (%r5rs-write (rest v)))))))
+        (%seq (display " . ") (r5rs-write (rest v)))))))
 
-(set! %r5rs-write
+(set! r5rs-write
   (fn (_ v)
     (if (pair? v)
       (%seq (display "(") (%seq (%r5rs-write-items v) (display ")")))
@@ -40,7 +39,9 @@
 
 ; The %repl-print contract: nil is the "no value" result and prints only the
 ; newline, matching lib/x/repl/loop.x.
-(def %r5rs-repl-print
+(def r5rs-repl-print
   (fn (_ result)
-    (unless (null? result) (%r5rs-write result))
+    (unless (null? result) (r5rs-write result))
     (newline)))
+
+(provide r5rs/printer r5rs-write r5rs-repl-print)
