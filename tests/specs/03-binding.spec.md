@@ -160,3 +160,29 @@
 ---
     3
 
+
+## define from a nested frame
+
+### binds the top-level name from inside a procedure's frame
+
+```scheme
+(define (%r5rs-dg-set) (if #t (define %r5rs-dg-probe 7) #f)) (%r5rs-dg-set) %r5rs-dg-probe
+```
+---
+    7
+
+### and through a frame interposed above it
+
+```scheme
+(define (%r5rs-dg-inner) (if #t (define %r5rs-dg-deep 9) #f)) (define (%r5rs-dg-outer) (%r5rs-dg-inner)) (%r5rs-dg-outer) %r5rs-dg-deep
+```
+---
+    9
+
+### a redefinition at depth updates the top-level cell in place
+
+```scheme
+(define %r5rs-dg-twice 1) (define (%r5rs-dg-again) (if #t (define %r5rs-dg-twice 2) #f)) (%r5rs-dg-again) %r5rs-dg-twice
+```
+---
+    2

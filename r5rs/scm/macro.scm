@@ -310,14 +310,9 @@
 ; that calls it. The op is dynamically scoped so it finds the gensym
 ; in the env at call time.
 
-; define-syntax: both bindings go through r5rs-def-global, and the expansion
-; evaluates in a child of the use site's environment.
-;
-; The bindings: this once handed a (begin (def ...) ...) to a one-argument
-; `eval` from inside an operative and relied on the bindings escaping to the
-; caller by def's save-stack rule -- the same fragile trick r5rs/aliases.x's
-; `define` stopped using. r5rs-def-global takes def's top-level path
-; unconditionally, whatever the frame depth.
+; define-syntax: both bindings go through r5rs-def-root, which binds in the
+; root whatever the frame depth, and the expansion evaluates in a child of the
+; use site's environment.
 ;
 ; The expansion: the generated op evaluates its expansion with
 ; `(eval <form> (pair () %sr-env))`. An environment is a pair of bindings and
@@ -337,8 +332,8 @@
     (def %ds-xfm-name
       (string->symbol
         (string-append "%xfm-" (symbol->string name))))
-    (r5rs-def-global %ds-xfm-name %ds-xfm)
-    (r5rs-def-global
+    (r5rs-def-root %ds-xfm-name %ds-xfm)
+    (r5rs-def-root
       name
       (eval
         (list

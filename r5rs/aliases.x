@@ -81,27 +81,18 @@
           (%r5rs-body-defs body)))
       e)))
 
-; define, in both spellings. Binds globally via (base def-global), which takes
-; def's top-level path unconditionally and is frame-independent; where the
-; engine lacks it (prim-ref answers ()), the fallback is eval! of
-; (def name (lit value)). The (lit ...) wrap matters: eval! evaluates the def
-; form it is handed, which would evaluate the value a second time -- invisible
-; for self-evaluating values, but a symbol value would be looked up. The eval!
-; fallback is not frame-independent, so def-global is preferred where present.
-; See x-lang#527.
-(def %dg-prim (prim-ref (lit base) (lit def-global)))
-(def r5rs-def-global
-  (if (null? %dg-prim)
-    (fn (_ n v) (eval! (list (lit def) n (list (lit lit) v))))
-    (fn (_ n v) (%dg-prim n v))))
+; define, in both spellings. Binds in the root: eval! evaluates there whatever
+; the frame depth (engine law 10). The (lit ...) wrap keeps def from evaluating
+; the value a second time -- a symbol value would be looked up.
+(def r5rs-def-root (fn (_ n v) (eval! (list (lit def) n (list (lit lit) v)))))
 (def define
   (op (name-or-form . body)
     e
     (if (pair? name-or-form)
-      (r5rs-def-global
+      (r5rs-def-root
         (first name-or-form)
         (eval (pair (lit lambda) (pair (rest name-or-form) body)) e))
-      (r5rs-def-global name-or-form (eval (first body) e)))))
+      (r5rs-def-root name-or-form (eval (first body) e)))))
 
 (def quote lit)
 (def quasiquote quasi)
@@ -423,10 +414,10 @@
 
 ; Scheme's vocabulary is the root's: every name a program calls bare is
 ; provided (global ...).  begin is the platform's own, which owns the name.
-; r5rs-def-global, r5rs-def-form and r5rs-rat? are helpers the .scm files
+; r5rs-def-root, r5rs-def-form and r5rs-rat? are helpers the .scm files
 ; read, and those run in the root too.
 (provide r5rs/aliases
-  (global r5rs-def-global) (global r5rs-def-form) (global r5rs-rat?)
+  (global r5rs-def-root) (global r5rs-def-form) (global r5rs-rat?)
   (global abs) (global angle) (global any?) (global append)
   (global caaaar) (global caaadr) (global caaar) (global caadar)
   (global caaddr) (global caadr) (global caar) (global cadaar)
