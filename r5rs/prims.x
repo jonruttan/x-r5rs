@@ -27,23 +27,20 @@
 ; make-type takes a string name; a symbol (which the .scm callers may pass) is
 ; current prim will not accept, so the wrapper converts and the .scm files can
 ; keep either spelling.
-(def %type-make (prim-ref (lit type) (lit make)))
+(import x/core/doors type-make type-make-instance type? obj-ref obj-set!)
 (def %cvt-prim (prim-ref (lit convert) (lit to)))
 
 (def make-type
   (fn (_ name handlers)
-    (%type-make
+    (type-make
       (if (symbol? name) (%cvt-prim name r5rs-string-type) name)
       handlers)))
 
-(def make-instance (prim-ref (lit type) (lit make-instance)))
-(def type? (prim-ref (lit type) (lit ?)))
+(def make-instance type-make-instance)
 
 ; --- Raw object slots --------------------------------------------------------
 ; Fetched from the catalog, like the type prims above.  They take the receiver
 ; the platform's prims all take, which the call site supplies.
-(def obj-ref (prim-ref (lit obj) (lit ref)))
-(def obj-set! (prim-ref (lit obj) (lit set!)))
 
 ; The record primitives are vocabulary: a Scheme program and x-r7rs's records
 ; call them bare, so they are provided (global ...).  The type handles are
