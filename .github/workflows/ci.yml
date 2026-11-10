@@ -1,86 +1,27 @@
 name: CI
 
-# The matrix runs two x-lang refs: the release this bundle declares in
-# lang.xon (requires-release ...) and current main. The pinned leg proves the
-# bundle still runs on the platform it declares; the main leg is an early
-# warning that x-lang has moved underneath it, and is allowed to fail.
+# The bundle CI the platform ships, in x-lang's .github/workflows/bundle.yml:
+# the suite against the release lang.xon declares, and against x-lang main on
+# a push to main, the weekly schedule and a manual dispatch.  The suite runs
+# on Ubuntu only, as it did before it moved there.
 
 on:
   push:
     branches: [main]
   pull_request:
   workflow_dispatch:
-  # Weekly, because the interesting failure here is one nothing in this
-  # repository triggers: x-lang moving while this bundle sits still.
+  # Weekly, because x-lang can move while this repository sits still.
   schedule:
     - cron: '0 6 * * 1'
 
 jobs:
-  # The pinned matrix leg is read from lang.xon, not written here, so there is
-  # no second copy to keep in sync -- the same ruling release-refs.sh applies
-  # wherever these versions are named.
-  prepare:
-    runs-on: ubuntu-latest
-    outputs:
-      legs: ${{ steps.legs.outputs.legs }}
-    steps:
-      - uses: actions/checkout@v4
-      - id: legs
-        name: Read the declared release from lang.xon
-        run: |
-          declared=$(sed -n 's/^(requires-release "\(.*\)")$/\1/p' lang.xon)
-          if [ -z "$declared" ]; then
-            echo "lang.xon declares no (requires-release ...)" >&2
-            exit 1
-          fi
-          echo "legs=[\"$declared\", \"main\"]" >> "$GITHUB_OUTPUT"
-          echo "matrix: $declared and main"
-
-  specs:
-    needs: prepare
-    name: specs @ x-lang ${{ matrix.x-lang }}
-    runs-on: ubuntu-latest
-    continue-on-error: ${{ matrix.x-lang == 'main' }}
-    strategy:
-      fail-fast: false
-      matrix:
-        # Both legs answer different questions: the pinned leg proves this
-        # bundle still runs on the platform it declares; the main leg is an
-        # early warning that x-lang has moved underneath it, and is allowed to
-        # fail. The pinned row comes from lang.xon.
-        x-lang: ${{ fromJSON(needs.prepare.outputs.legs) }}
-
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Check out x-lang
-        uses: actions/checkout@v4
-        with:
-          repository: jonruttan/x-lang
-          ref: ${{ matrix.x-lang }}
-          path: .x-lang
-
-
-      # The engine is acquired, not built: x-lang pins one and knows how to
-      # fetch it.  Nothing here reimplements that.
-      - name: Build the platform
-        working-directory: .x-lang
-        run: |
-          make engine      # acquire the pinned engine
-          make             # x-bin at the repo root -- `make engine` does not build it
-          make boot        # the launcher-free amalgams the harness loads
-
-      # SPEC_BATCH=1 because a hosted runner is memory-constrained: the runner
-      # buckets up to SPEC_BATCH spec files into one process with no auto-GC
-      # during a batch, so a bucket accumulates every file's garbage until it
-      # exits -- fine on a dev box, not on a 16 GB runner where the runaway
-      # ceiling cannot trip before the machine does. Lowering the ceiling would
-      # not help -- the suite needs the objects resident to finish -- so the
-      # memory goes down instead: one file per process.
-      - name: Run the R5RS specs
-        env:
-          SPEC_BATCH: 1
-        run: X="$PWD/.x-lang/x.sh" sh tests/spec-gate.sh
+  ci:
+    uses: jonruttan/x-lang/.github/workflows/bundle.yml@main
+    with:
+      os: '["ubuntu-24.04"]'
+      # One spec file per process: a hosted runner has too little memory for
+      # a batch, whose garbage stays until the process exits.
+      spec-env: SPEC_BATCH=1
 
   if-ladders:
     # `match` is the primitive; a decision with four or more arms written as
@@ -90,11 +31,11 @@ jobs:
     # parses the modules and never evaluates them -- so it runs against x-lang
     # main, borrowing the platform only as a parser.
     name: if ladders are match
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - name: Check out x-lang
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: jonruttan/x-lang
           ref: main
@@ -108,48 +49,21 @@ jobs:
       - name: No new if ladders
         run: X="$PWD/.x-lang/x.sh" sh tools/check/if-ladders.sh
 
-  relocatable:
-    # Gate: a bundle needs no root-relative path literal, not even in run.x
-    # (x.sh boots the dialect and arms this root before run.x is read). One
-    # would nail the bundle to the directory it was written in, and the
-    # symptom only appears once someone moves it.
-    name: no path literals at all
-    runs-on: ubuntu-latest
+  release-refs:
+    # The kit ships with the platform, so this job needs x-lang present -- a
+    # shallow checkout of the release lang.xon declares, not a build. The
+    # check reads lang.xon and greps the tree, so X_LANG_KIT points straight
+    # at the kit rather than going through `x --share-dir`.
+    name: the declared versions are named once
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      # The kit ships with the platform, so this job needs x-lang present -- a
-      # shallow checkout of the release lang.xon declares, not a build. The
-      # check reads lang.xon and greps the tree, so X_LANG_KIT points straight
-      # at the kit rather than going through `x --share-dir`.
+      - uses: actions/checkout@v7
       - name: Check out the lang kit
         run: |
           declared=$(sed -n 's/^(requires-release "\(.*\)")$/\1/p' lang.xon)
           git clone --depth 1 --branch "$declared" \
             https://github.com/jonruttan/x-lang.git .x-lang
-
       - name: The declared versions are named once
         env:
           X_LANG_KIT: ${{ github.workspace }}/.x-lang/tools/lang-kit
         run: sh tools/check/release-refs.sh
-
-      - name: No path literals outside run.x
-        run: |
-          # Ignore comments -- a file may quote a literal it does not use.
-          # Exclude the platform clone: the lang-kit step clones x-lang into
-          # .x-lang, whose own boot files use root-relative includes
-          # legitimately, and this gate asks only whether THIS bundle relocates.
-          hits=$(grep -rn '(include "[a-zA-Z]' --include='*.x' \
-                 --exclude-dir='.x-lang' . \
-                 | grep -Ev ':[0-9]+:[[:space:]]*;' || true)
-          if [ -n "$hits" ]; then
-            echo "root-relative include (a bundle needs none, not even in run.x):" >&2
-            echo "$hits" >&2
-            exit 1
-          fi
-      - name: The generated harness is not committed
-        run: |
-          if [ -e tests/lib/harness.gen.x ]; then
-            echo "tests/lib/harness.gen.x is generated and machine-specific;" >&2
-            echo "it must not be committed (see .gitignore)" >&2
-            exit 1
-          fi
