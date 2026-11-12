@@ -2,8 +2,10 @@
 
 <p align="center"><img src="docs/bitwise-banner.svg" alt="x-r5rs, with Bitwise the owl" width="100%"></p>
 
-The Scheme vocabulary and binding forms, riding on
-[x-lang](https://github.com/jonruttan/x-lang)'s evaluator and numeric tower.
+R5RS Scheme written in [x-lang](https://github.com/jonruttan/x-lang): the
+report's vocabulary and binding forms, hygienic `syntax-rules`,
+`call/cc` and `dynamic-wind`, and ports, on x-lang's evaluator and numeric
+tower.
 
 ```
 $ x -l r5rs
@@ -18,14 +20,21 @@ $ x -l r5rs
 
 x-r5rs is a **lang**: a surface syntax loaded over an x-lang dialect, so a
 spelling shared with x-lang can mean something different here — `lambda` is one
-such spelling, and `do` is the one this lang cannot claim (it dispatches on
-that pattern instead). The terms are in x-lang's
+such spelling. `do` is both x-lang's sequencing form and Scheme's loop, and
+here it is the loop when its operands have the loop's shape. The terms are in
+x-lang's
 [lang contract](https://github.com/jonruttan/x-lang/blob/main/docs/lang-contract.md).
 
 ## Status
 
 667 specs, all green against x-lang **v0.44.0**, the release `lang.xon`
 declares — about 1,500 lines of Scheme and 680 of x, across 27 spec files.
+The suite covers the report's expressions and derived forms, `syntax-rules`
+and its hygiene, continuations and `dynamic-wind`, the numeric tower, lists,
+strings, characters, vectors and ports.
+
+This README describes `main`. `releases/latest` installs v0.2.5, which
+pairs with an earlier x-lang release.
 
 [`tests/contract/known-failures.txt`](tests/contract/known-failures.txt) is
 **empty** and stays in the tree saying so: `make check` is red the moment any
@@ -92,8 +101,8 @@ verifies it against a digest before unpacking. In the project's
 
 ```x
 (lang "r5rs")
-(release "v0.2.4")
-(bundle "sha256:…" "https://github.com/jonruttan/x-r5rs/releases/download/v0.2.4/x-r5rs-v0.2.4.tar.gz")
+(release "v0.2.5")
+(bundle "sha256:…" "https://github.com/jonruttan/x-r5rs/releases/download/v0.2.5/x-r5rs-v0.2.5.tar.gz")
 (source "https://github.com/jonruttan/x-r5rs.git")
 ```
 
@@ -102,7 +111,7 @@ Each release's notes carry this block with its digest, ready to paste. Then:
 ```x-repl
 > (import x/tool/pin)
 > (Pin bundle "deps/langs")
-"deps/langs/r5rs-v0.2.4"
+"deps/langs/r5rs-v0.2.5"
 ```
 
 `deps/langs/` is where `x -l` looks in a checkout; `X_LANG_DIR` overrides it.
@@ -115,7 +124,7 @@ the digest is what makes the version reproducible.
 does not satisfy that row — only an install or an unpacked release tarball
 carries the stamped `version` file it compares against, and that stamp is
 `git describe`, so an install from a checkout not exactly on the tag reads as
-`v0.2.4-1-gabc1234-dirty` and is refused by name. `--allow-lang-skew` is the
+`v0.2.5-1-gabc1234-dirty` and is refused by name. `--allow-lang-skew` is the
 way through while working on both at once.
 
 ## Running it
@@ -176,8 +185,12 @@ r5rs/aliases.x         Scheme's names in x's current spellings
 r5rs/prims.x           the raw platform layer
 r5rs/printer.x         Scheme-style `write`
 r5rs/base.x            assembles the parts
+r5rs/constructs.x      construct declarations: how each Scheme form formats and scopes
 r5rs/scm/*.scm         the library, in Scheme
+docs/                  the report (r5rs.pdf, .ps, .dvi) and the banner
 tests/spec-runner.sh   sources the platform's shared runner
+tests/spec-gate.sh     the suite against the contract; what `make check` runs
+tests/gen-harness.sh   writes the harness the suite loads
 tests/specs/*.spec.md  the suite, as literate markdown
 tests/contract/        the recorded debt CI gates on -- empty, and saying so
 tools/bundle.sh        rolls a release tarball and prints its pin
