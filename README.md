@@ -27,7 +27,7 @@ x-lang's
 
 ## Status
 
-667 specs, all green against x-lang **v0.44.0**, the release `lang.xon`
+667 specs, all green against x-lang **v0.53.0**, the release `lang.xon`
 declares — about 1,500 lines of Scheme and 680 of x, across 27 spec files.
 The suite covers the report's expressions and derived forms, `syntax-rules`
 and its hygiene, continuations and `dynamic-wind`, the numeric tower, lists,
