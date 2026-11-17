@@ -186,6 +186,7 @@ r5rs/prims.x           the raw platform layer
 r5rs/printer.x         Scheme-style `write`
 r5rs/base.x            assembles the parts
 r5rs/constructs.x      construct declarations: how each Scheme form formats and scopes
+r5rs/syntax.x          the Scheme highlighting grammar x/tool/syntax colours with
 r5rs/scm/*.scm         the library, in Scheme
 docs/                  the report (r5rs.pdf, .ps, .dvi) and the banner
 tests/spec-runner.sh   sources the platform's shared runner
