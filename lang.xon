@@ -57,3 +57,7 @@
 (requires-release "v0.55.0")
 
 (entry "run.x")
+
+; The Scheme grammar, for any process that colours a file: r5rs/syntax
+; imports x-lang libraries only.  x-r7rs's files colour through it as well.
+(grammar scheme (module r5rs/syntax) (files ".scm" ".ss" ".sld") (interpreters "scheme" "guile" "chibi-scheme" "csi" "gosh"))
