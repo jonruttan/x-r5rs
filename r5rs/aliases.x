@@ -400,10 +400,10 @@
 
 ; --- The rest of the functional stdlib --------------------------------------
 (def const (fn (_ x) (Fn const x)))
-; (curry f x) is partial application here, not classic currying -- which is
-; what the class means by it and what the suite asserts: (curry add 5) is a
+; (curry f x) is partial application here, not classic currying -- what
+; (Fn partial) does and what the suite asserts: (curry add 5) is a
 ; one-argument function, not a chain.
-(def curry (fn (_ f x) (Fn curry f x)))
+(def curry (fn (_ f x) (Fn partial f x)))
 (def flip (fn (_ f) (Fn flip f)))
 (def complement (fn (_ f) (Fn complement f)))
 
