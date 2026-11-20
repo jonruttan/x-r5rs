@@ -18,9 +18,20 @@
 ; against the bundle wherever it sits.
 (import r5rs/base r5rs-version r5rs-repl-print)
 
-(set! %lang-name "R5RS Scheme")
-(set! %lang-version r5rs-version)
-(set! %repl-prompt "> ")
-; Scheme prints Scheme results: (b c), not x's round-trippable ('b 'c).
-; See r5rs/printer.x for why that is a re-meaning rather than a workaround.
-(set! %repl-print r5rs-repl-print)
+(import r5rs/line scheme-lang-register!)
+
+; R5RS as a lang of the session (x/repl/lang): the prompt, Scheme's printer
+; and the line coloured as Scheme. Scheme prints Scheme results: (b c), not
+; x's round-trippable ('b 'c); see r5rs/printer.x for why that is a
+; re-meaning rather than a workaround.
+(scheme-lang-register! "r5rs" r5rs-repl-print)
+
+; `-l` is repeatable, and named second (`x -l xe -l r5rs`) this bundle is a
+; library to the lang that owns the prompt: it is registered, so (lang r5rs)
+; switches to it, and touches neither the banner nor the prompt. A wrapper
+; older than %lang-lead binds nothing, and then this bundle leads.
+(if (guard (_ #t) (str=? %lang-lead "r5rs"))
+  (%seq (set! %lang-name "R5RS Scheme")
+    (%seq (set! %lang-version r5rs-version)
+      (Lang use! "r5rs")))
+  ())
