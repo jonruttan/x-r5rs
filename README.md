@@ -187,6 +187,7 @@ r5rs/printer.x         Scheme-style `write`
 r5rs/base.x            assembles the parts
 r5rs/constructs.x      construct declarations: how each Scheme form formats and scopes
 r5rs/syntax.x          the Scheme highlighting grammar x/tool/syntax colours with
+r5rs/line.x            Scheme as a lang of the session, its line coloured by that grammar
 r5rs/scm/*.scm         the library, in Scheme
 docs/                  the report (r5rs.pdf, .ps, .dvi) and the banner
 tests/spec-runner.sh   sources the platform's shared runner
