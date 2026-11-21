@@ -68,6 +68,15 @@ check-release-refs: ## Assert the declared x-lang release is named in one place
 check-if-ladders: ## Assert no new nested-if ladders (tools/contract/if-ladders.txt)
 	X="$(X)" sh tools/check/if-ladders.sh
 
+# The card runs from here, so X is an installed x: a checkout's wrapper runs
+# only from its own root.  X_LANG_DIR is the directory holding this bundle,
+# so `x -l r5rs` loads this tree and not an installed copy.  CARD_SH is the
+# check: the installed x-lang's, or a newer one named here.
+.PHONY: card
+card: ## Hold docs/card.md to the card format and run its programs
+	X_LANG_DIR="$${X_LANG_DIR:-$(CURDIR)/..}" BUNDLE=. X="$(X)" \
+		sh "$${CARD_SH:-$$("$(X)" --share-dir)/tools/lang-kit/card.sh}"
+
 .PHONY: bundle
 bundle: ## Roll a release tarball and print its pin
 	sh tools/bundle.sh

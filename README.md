@@ -147,7 +147,12 @@ X=/path/to/x-lang/x.sh make check   # the suite against the contract, which CI g
 make check-release-refs             # the declared x-lang release is named in one place
 X=/path/to/x-lang/x.sh make check-if-ladders   # no new nested-if ladders
 make bundle                         # roll a release tarball and print its pin
+make card                           # docs/card.md: its format, and every program run
 ```
+
+[docs/card.md](docs/card.md) is the reference page: the report's forms and
+procedures in tables, and programs that are run, each line beside what it
+prints.
 
 Pass `X` explicitly: without it the suite takes the `x` on your PATH, and an
 installed x that trails the checkout reports failures the platform has already
