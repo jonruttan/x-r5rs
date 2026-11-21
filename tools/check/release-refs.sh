@@ -13,31 +13,31 @@
 #     (   )
 #      " "
 #
-# The check lives in the lang kit, not here: it is identical in every bundle,
+# The check lives in the bundle kit, not here: it is identical in every bundle,
 # so one shared copy saves an N-repo re-vendor for every fix. It needs no
-# platform to run -- it reads lang.xon and greps the tree -- so X_LANG_KIT
-# names a checkout's tools/lang-kit directly (what CI uses), and otherwise it
+# platform to run -- it reads bundle.xon and greps the tree -- so X_BUNDLE_KIT
+# names a checkout's tools/bundle-kit directly (what CI uses), and otherwise it
 # asks x where its share tree is.
 set -e
 
 BUNDLE="$(cd "$(dirname "$0")/../.." && pwd)"
 export BUNDLE
 
-if [ -n "$X_LANG_KIT" ]; then
-	KIT="$X_LANG_KIT"
+if [ -n "$X_BUNDLE_KIT" ]; then
+	KIT="$X_BUNDLE_KIT"
 else
 	X="${X:-x}"
 	command -v "$X" >/dev/null 2>&1 || {
-		echo "x-r5rs: no x on PATH, and X_LANG_KIT is unset." >&2
-		echo "  Set X=/path/to/x.sh, or X_LANG_KIT=/path/to/x-lang/tools/lang-kit" >&2
+		echo "x-r5rs: no x on PATH, and X_BUNDLE_KIT is unset." >&2
+		echo "  Set X=/path/to/x.sh, or X_BUNDLE_KIT=/path/to/x-lang/tools/bundle-kit" >&2
 		exit 1
 	}
-	KIT="$("$X" --share-dir)/tools/lang-kit"
+	KIT="$("$X" --share-dir)/tools/bundle-kit"
 fi
 
 [ -f "$KIT/release-refs.sh" ] || {
 	echo "x-r5rs: no release-refs.sh under $KIT" >&2
-	echo "  The lang kit ships with x-lang; this bundle declares which one." >&2
+	echo "  The bundle kit ships with x-lang; this bundle declares which one." >&2
 	exit 1
 }
 

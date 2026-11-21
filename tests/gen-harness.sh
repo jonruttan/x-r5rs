@@ -54,7 +54,7 @@ cat > "$OUT" <<EOF
 ; commit: the two absolute paths below are facts of this machine.
 (def %install-root "$X_ROOT")
 (include "$X_BASE")
-(import-path! "$BUNDLE")
+(import-path! "$BUNDLE/lib")
 (import r5rs/base r5rs-repl-print)
 (set! %repl-print r5rs-repl-print)
 EOF

@@ -2,27 +2,27 @@
 
 ## r5rs/syntax -- the Scheme highlighting grammar
 
-The bundle's lang.xon declares a grammar, `scheme`, that x/tool/syntax
+The bundle's bundle.xon declares a grammar, `scheme`, that x/tool/syntax
 colours Scheme files with. Its module, `r5rs/syntax`, imports x-lang
 libraries only, and registers the grammar as it loads.
 
 The cases share one process, and a registered grammar stays registered, so
-the catalogue's case comes first: it finds the grammar through lang.xon,
+the catalogue's case comes first: it finds the grammar through bundle.xon,
 before anything has imported the module.
 
 ### the catalogue finds scheme by suffix, by #! and by modeline
 
 ```scheme
 (import x/sys/posix) (import x/sys/file) (import x/tool/syntax)
-(define root (Str8 replace "/r5rs/syntax.x" "" (%module-resolve-file "r5rs/syntax.x")))
+(define root (Str8 replace "/lib/r5rs/syntax.x" "" (%module-resolve-file "r5rs/syntax.x")))
 (define tmp (File temp "/tmp/x-r5rs-spec-langs-"))
 (File close (car tmp))
 (define d (cdr tmp))
 (File unlink d)
 (File mkdir d)
 (File symlink root (Str8 append d "/r5rs"))
-(define was (Sys getenv "X_LANG_DIR"))
-(Sys setenv "X_LANG_DIR" d)
+(define was (Sys getenv "X_BUNDLE_DIR"))
+(Sys setenv "X_BUNDLE_DIR" d)
 (Syntax forget!)
 (define row (List find (lambda (r) (eq? (car r) 'scheme)) (Syntax catalogue)))
 (define (grammar-of path . text)
@@ -36,7 +36,7 @@ before anything has imported the module.
         (let ((g (Syntax named 'scheme))) (list (g files) (g interpreters)))))
 (File unlink (Str8 append d "/r5rs"))
 (File rmdir d)
-(Sys setenv "X_LANG_DIR" (if (null? was) "" was))
+(Sys setenv "X_BUNDLE_DIR" (if (null? was) "" was))
 (Syntax forget!)
 seen
 ```

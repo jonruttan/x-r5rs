@@ -27,7 +27,7 @@ x-lang's
 
 ## Status
 
-667 specs, all green against x-lang **v0.59.0**, the release `lang.xon`
+667 specs, all green against x-lang **v0.60.0**, the release `bundle.xon`
 declares — about 1,500 lines of Scheme and 680 of x, across 27 spec files.
 The suite covers the report's expressions and derived forms, `syntax-rules`
 and its hygiene, continuations and `dynamic-wind`, the numeric tower, lists,
@@ -54,12 +54,12 @@ enough, because a dialect decides what is preloaded, not what is reachable
 From any directory, nothing cloned:
 
 ```bash
-x --install-lang https://github.com/jonruttan/x-r5rs/releases/latest/download/lang.pin.xon
+x --install-bundle https://github.com/jonruttan/x-r5rs/releases/latest/download/bundle.pin.xon
 x -l r5rs
 ```
 
 x fetches the published pin, then the tarball it names, verifies the digest,
-and installs to `<share>/langs/r5rs`, where `x -l` looks. A failed upgrade
+and installs to `<share>/bundles/r5rs`, where `x -l` looks. A failed upgrade
 leaves the working install untouched.
 
 From a clone:
@@ -70,26 +70,26 @@ PREFIX=$HOME/.local make install  # or a particular prefix
 ```
 
 `make uninstall` removes it either way. An installed x searches
-`<share>/langs/*/lang.xon`; a lang is installed when its files are there.
+`<share>/bundles/*/bundle.xon`; a lang is installed when its files are there.
 There is no registry.
 
-`x` resolves langs relative to the directory it runs in. Inside an x-lang
-checkout it searches `deps/langs/` only, so an installed lang is not found
+`x` resolves bundles relative to the directory it runs in. Inside an x-lang
+checkout it searches `deps/bundles/` only, so an installed lang is not found
 there:
 
 ```
 $ cd path/to/x-lang && x -l r5rs
 Error: no library, app or lang named 'r5rs'
   searched lib/r5rs.x, apps/r5rs/run.x
-      and deps/langs/*/lang.xon
+      and deps/bundles/*/bundle.xon
 ```
 
-Run `x` from another directory, or set `X_LANG_DIR`, which takes precedence in
+Run `x` from another directory, or set `X_BUNDLE_DIR`, which takes precedence in
 both cases:
 
 ```bash
-X_LANG_DIR=$HOME/.local/share/x/langs/ x -l r5rs   # the installed one
-X_LANG_DIR=/path/to/x-r5rs/.. x -l r5rs            # a checkout, uninstalled
+X_BUNDLE_DIR=$HOME/.local/share/x/bundles/ x -l r5rs   # the installed one
+X_BUNDLE_DIR=/path/to/x-r5rs/.. x -l r5rs            # a checkout, uninstalled
 ```
 
 ## Pin it for a project
@@ -97,10 +97,10 @@ X_LANG_DIR=/path/to/x-r5rs/.. x -l r5rs            # a checkout, uninstalled
 An install is unversioned and machine-wide. When a project must build against
 a specific version, pin it: `Pin bundle` fetches the release tarball and
 verifies it against a digest before unpacking. In the project's
-`lang.pin.xon`:
+`bundle.pin.xon`:
 
 ```x
-(lang "r5rs")
+(name "r5rs")
 (release "v0.2.5")
 (bundle "sha256:…" "https://github.com/jonruttan/x-r5rs/releases/download/v0.2.5/x-r5rs-v0.2.5.tar.gz")
 (source "https://github.com/jonruttan/x-r5rs.git")
@@ -110,21 +110,21 @@ Each release's notes carry this block with its digest, ready to paste. Then:
 
 ```x-repl
 > (import x/tool/pin)
-> (Pin bundle "deps/langs")
-"deps/langs/r5rs-v0.2.5"
+> (Pin bundle "deps/bundles")
+"deps/bundles/r5rs-v0.2.5"
 ```
 
-`deps/langs/` is where `x -l` looks in a checkout; `X_LANG_DIR` overrides it.
+`deps/bundles/` is where `x -l` looks in a checkout; `X_BUNDLE_DIR` overrides it.
 
 Install when you just want `x -l r5rs` to work. Pin when a build depends on it:
 the digest is what makes the version reproducible.
 
-**x-r7rs consumes this bundle by an exact version**: its `lang.xon` carries
-`(requires-lang "r5rs" …)`, compared for equality and never parsed. A checkout
+**x-r7rs consumes this bundle by an exact version**: its `bundle.xon` carries
+`(requires-bundle "r5rs" …)`, compared for equality and never parsed. A checkout
 does not satisfy that row — only an install or an unpacked release tarball
 carries the stamped `version` file it compares against, and that stamp is
 `git describe`, so an install from a checkout not exactly on the tag reads as
-`v0.2.5-1-gabc1234-dirty` and is refused by name. `--allow-lang-skew` is the
+`v0.2.5-1-gabc1234-dirty` and is refused by name. `--allow-bundle-skew` is the
 way through while working on both at once.
 
 ## Running it
@@ -134,8 +134,8 @@ x -l r5rs                  # interactive
 x -l r5rs -f program.scm   # batch
 ```
 
-x-lang boots the dialect `lang.xon` declares, arms this bundle's module root,
-and loads `run.x` on top.
+x-lang boots the dialect `bundle.xon` declares, arms this bundle's module root,
+and imports the entry, `r5rs/run`.
 
 ## Development
 
@@ -160,12 +160,12 @@ fixed.
 
 Do not `make install` into an x-lang checkout. The Makefile asks
 `$(X) --share-dir` where to put the bundle, and a checkout answers with its own
-root, so the files land in `<checkout>/langs/r5rs`, which `-l` does not search
+root, so the files land in `<checkout>/bundles/r5rs`, which `-l` does not search
 there. The install reports success and the lang is still not found. Install
-into a real `<share>` tree, or use `X_LANG_DIR`.
+into a real `<share>` tree, or use `X_BUNDLE_DIR`.
 
 `make check-release-refs` keeps the versions named here as copies of the one
-row in `lang.xon` from going stale; CI runs the declared release and x-lang
+row in `bundle.xon` from going stale; CI runs the declared release and x-lang
 `main`, so a platform change that breaks this bundle shows up as a red build.
 
 `make check-if-ladders` is the other gate, and it needs an `X`: the checker is
@@ -179,21 +179,21 @@ The check is a ratchet in both directions.
 The release tarball is byte-reproducible: it is built from the tag with
 `git archive` and a timestamp-free gzip, so the same tag always yields the same
 digest. Pushing a `v*` tag runs the suite and, only if it is green, publishes
-the tarball, its `.sha256` and `lang.pin.xon` as a GitHub release.
+the tarball, its `.sha256` and `bundle.pin.xon` as a GitHub release.
 
 ## Layout
 
 ```
-lang.xon               name, dialect, and the x-lang release this pairs with
-run.x                  the entry point
-r5rs/aliases.x         Scheme's names in x's current spellings
-r5rs/prims.x           the raw platform layer
-r5rs/printer.x         Scheme-style `write`
-r5rs/base.x            assembles the parts
-r5rs/constructs.x      construct declarations: how each Scheme form formats and scopes
-r5rs/syntax.x          the Scheme highlighting grammar x/tool/syntax colours with
-r5rs/line.x            Scheme as a lang of the session, its line coloured by that grammar
-r5rs/scm/*.scm         the library, in Scheme
+bundle.xon             name, dialect, and the x-lang release this pairs with
+lib/r5rs/run.x         the entry: the module r5rs/run
+lib/r5rs/aliases.x     Scheme's names in x's current spellings
+lib/r5rs/prims.x       the raw platform layer
+lib/r5rs/printer.x     Scheme-style `write`
+lib/r5rs/base.x        assembles the parts
+lib/r5rs/constructs.x  construct declarations: how each Scheme form formats and scopes
+lib/r5rs/syntax.x      the Scheme highlighting grammar x/tool/syntax colours with
+lib/r5rs/line.x        Scheme as a lang of the session, its line coloured by that grammar
+lib/r5rs/scm/*.scm     the library, in Scheme
 docs/                  the report (r5rs.pdf, .ps, .dvi) and the banner
 tests/spec-runner.sh   sources the platform's shared runner
 tests/spec-gate.sh     the suite against the contract; what `make check` runs
@@ -201,15 +201,15 @@ tests/gen-harness.sh   writes the harness the suite loads
 tests/specs/*.spec.md  the suite, as literate markdown
 tests/contract/        the recorded debt CI gates on -- empty, and saying so
 tools/bundle.sh        rolls a release tarball and prints its pin
-tools/check/           the gates: release-refs from x-lang's lang kit, and the
+tools/check/           the gates: release-refs from x-lang's bundle kit, and the
                        if-ladder linter, which is x because a ladder's depth is what a grep cannot see
 tools/contract/        the recorded if-ladder debt -- empty, and saying so
 scripts/               older harnesses, superseded by tests/ -- kept, not wired up
 Makefile               install / uninstall / test / check / bundle
 ```
 
-No file here carries a path literal, `run.x` included: x.sh boots the dialect
-`lang.xon` declares and arms this root before `run.x` is read. CI enforces it.
+No file here carries a path literal, the entry included: x.sh boots the dialect
+`bundle.xon` declares and arms `lib/` before the entry is imported. CI enforces it.
 
 ## Background
 
