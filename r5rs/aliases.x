@@ -27,6 +27,8 @@
 (import r5rs/prims
   r5rs-char-type r5rs-float-type r5rs-int-type r5rs-rational-type
   r5rs-string-type r5rs-symbol-type)
+(import x/core/doors obj-same?)
+(import x/type/env)
 
 (def %cvt (prim-ref (lit convert) (lit to)))
 (def %prim-read (prim-ref (lit io) (lit read)))
@@ -81,18 +83,40 @@
           (%r5rs-body-defs body)))
       e)))
 
-; define, in both spellings. Binds in the root: eval! evaluates there whatever
-; the frame depth (engine law 10). The (lit ...) wrap keeps def from evaluating
+; define, in both spellings. Binds at the top level of the code that wrote
+; it, whatever the frame depth. The (lit ...) wrap keeps def from evaluating
 ; the value a second time -- a symbol value would be looked up.
-(def r5rs-def-root (fn (_ n v) (eval! (list (lit def) n (list (lit lit) v)))))
+;
+; There are two top levels once the platform gives the program an environment
+; of its own, a child of the library's (x-lang#1406): the program's, which
+; (Env root) answers, and the platform's, with no parent. A program's define
+; binds in the program's. The Scheme library is read inside a module, a child
+; of the platform's environment and not of the program's, and its defines are
+; the library's own names: they bind in the platform's, where this module and
+; the program both read them. eval!, which this was, evaluates in the
+; program's from anywhere, so a library define bound a name its own next form
+; could not see.
+;
+; %r5rs-top-env walks from the define's environment E to whichever it meets
+; first. Before the split the two are one environment and the walk ends
+; there, which is where eval! bound.
+(def %r5rs-top-env
+  (fn (self e top)
+    (if (obj-same? e top)
+      e
+      (if (null? (Env parent e)) e (self (Env parent e) top)))))
+(def r5rs-def-root
+  (fn (_ e n v)
+    (eval (list (lit def) n (list (lit lit) v)) (%r5rs-top-env e (Env root)))))
 (def define
   (op (name-or-form . body)
     e
     (if (pair? name-or-form)
       (r5rs-def-root
+        e
         (first name-or-form)
         (eval (pair (lit lambda) (pair (rest name-or-form) body)) e))
-      (r5rs-def-root name-or-form (eval (first body) e)))))
+      (r5rs-def-root e name-or-form (eval (first body) e)))))
 
 (def quote lit)
 (def quasiquote quasi)
