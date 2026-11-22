@@ -1,7 +1,7 @@
 name: CI
 
 # The bundle CI the platform ships, in x-lang's .github/workflows/bundle.yml:
-# the suite against the release lang.xon declares, and against x-lang main on
+# the suite against the release bundle.xon declares, and against x-lang main on
 # a push to main, the weekly schedule and a manual dispatch.  The suite runs
 # on Ubuntu only, as it did before it moved there.
 
@@ -51,19 +51,19 @@ jobs:
 
   release-refs:
     # The kit ships with the platform, so this job needs x-lang present -- a
-    # shallow checkout of the release lang.xon declares, not a build. The
-    # check reads lang.xon and greps the tree, so X_LANG_KIT points straight
+    # shallow checkout of the release bundle.xon declares, not a build. The
+    # check reads bundle.xon and greps the tree, so X_BUNDLE_KIT points straight
     # at the kit rather than going through `x --share-dir`.
     name: the declared versions are named once
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
-      - name: Check out the lang kit
+      - name: Check out the bundle kit
         run: |
-          declared=$(sed -n 's/^(requires-release "\(.*\)")$/\1/p' lang.xon)
+          declared=$(sed -n 's/^(requires-release "\(.*\)")$/\1/p' bundle.xon)
           git clone --depth 1 --branch "$declared" \
             https://github.com/jonruttan/x-lang.git .x-lang
       - name: The declared versions are named once
         env:
-          X_LANG_KIT: ${{ github.workspace }}/.x-lang/tools/lang-kit
+          X_BUNDLE_KIT: ${{ github.workspace }}/.x-lang/tools/bundle-kit
         run: sh tools/check/release-refs.sh

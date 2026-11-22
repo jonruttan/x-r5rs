@@ -1,12 +1,12 @@
 # x-r5rs -- the R5RS lang for x-lang
 #
-# Install copies this bundle to <share>/langs/r5rs, where `x -l` looks: a lang
+# Install copies this bundle to <share>/bundles/r5rs, where `x -l` looks: a lang
 # is installed when its files are there. No registry, no database.
 #
 #   make install                        into the x on PATH
 #   PREFIX=$HOME/.local make install    into a particular prefix
 #
-# A pin (lang.pin.xon + Pin bundle) freezes a verified tarball for one project
+# A pin (bundle.pin.xon + Pin bundle) freezes a verified tarball for one project
 # and is what a build should depend on. An install is one unversioned copy for
 # the whole machine. Pin when the version matters; install to get `x -l r5rs`
 # working.
@@ -15,7 +15,7 @@ X ?= x
 
 # The version is derived from git describe, never committed: a version literal
 # is true only at the commit it is tagged on and wrong on every commit after.
-# lang.xon declares what this bundle requires; the installed artifact carries
+# bundle.xon declares what this bundle requires; the installed artifact carries
 # what it is, in a version stamp -- the same split as x-lang's own
 # $(X_RELEASE) -> <lib>/contract/release.
 LANG_VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
@@ -23,15 +23,15 @@ LANG_VERSION ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo
 # install`.  Otherwise ask the x on PATH where its tree is -- the question
 # --share-dir exists to answer.
 SHARE := $(if $(PREFIX),$(PREFIX)/share/x,$(shell $(X) --share-dir))
-DEST  := $(SHARE)/langs/r5rs
+DEST  := $(SHARE)/bundles/r5rs
 
 # What a consumer needs to RUN the lang: the declaration, the entry, the
 # modules.  Not the suite, not the tooling, not CI -- those are this
 # repository's business, not the installed platform's.
-PAYLOAD := lang.xon run.x r5rs
+PAYLOAD := bundle.xon lib
 
 .PHONY: install
-install: ## Install into <share>/langs/r5rs
+install: ## Install into <share>/bundles/r5rs
 	@test -n "$(SHARE)" || { echo "x-r5rs: cannot find an x tree -- set PREFIX or X" >&2; exit 1; }
 	@test -d "$(SHARE)" || { echo "x-r5rs: no x tree at $(SHARE)" >&2; exit 1; }
 	rm -rf "$(DEST)"
@@ -54,7 +54,7 @@ test: ## Run the spec suite (every failure is loud)
 check: check-release-refs check-if-ladders ## Run the suite against tests/contract/known-failures.txt -- what CI gates on
 	X="$(X)" sh tests/spec-gate.sh
 
-# Seconds, and no platform needed: it reads lang.xon and greps the tree.  It
+# Seconds, and no platform needed: it reads bundle.xon and greps the tree.  It
 # rides `check` instead of standing on its own because the thing it catches --
 # a README naming a release nobody tested -- ships silently otherwise.
 .PHONY: check-release-refs
@@ -69,13 +69,13 @@ check-if-ladders: ## Assert no new nested-if ladders (tools/contract/if-ladders.
 	X="$(X)" sh tools/check/if-ladders.sh
 
 # The card runs from here, so X is an installed x: a checkout's wrapper runs
-# only from its own root.  X_LANG_DIR is the directory holding this bundle,
+# only from its own root.  X_BUNDLE_DIR is the directory holding this bundle,
 # so `x -l r5rs` loads this tree and not an installed copy.  CARD_SH is the
 # check: the installed x-lang's, or a newer one named here.
 .PHONY: card
 card: ## Hold docs/card.md to the card format and run its programs
-	X_LANG_DIR="$${X_LANG_DIR:-$(CURDIR)/..}" BUNDLE=. X="$(X)" \
-		sh "$${CARD_SH:-$$("$(X)" --share-dir)/tools/lang-kit/card.sh}"
+	X_BUNDLE_DIR="$${X_BUNDLE_DIR:-$(CURDIR)/..}" BUNDLE=. X="$(X)" \
+		sh "$${CARD_SH:-$$("$(X)" --share-dir)/tools/bundle-kit/card.sh}"
 
 .PHONY: bundle
 bundle: ## Roll a release tarball and print its pin

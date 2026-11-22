@@ -13,9 +13,9 @@
 #     (   )
 #      " "
 #
-# The gate lives in the lang kit, not here: it is identical in every bundle, so
+# The gate lives in the bundle kit, not here: it is identical in every bundle, so
 # one shared copy (x-lang#564, from v0.10.0) saves an N-repo re-vendor for every
-# fix. X_LANG_KIT names a checkout's tools/lang-kit directly (what CI uses);
+# fix. X_BUNDLE_KIT names a checkout's tools/bundle-kit directly (what CI uses);
 # otherwise the kit is found where x says its share tree is. Unlike
 # release-refs this gate runs the suite, so an x is needed either way.
 set -e
@@ -23,22 +23,22 @@ set -e
 BUNDLE="$(cd "$(dirname "$0")/.." && pwd)"
 export BUNDLE
 
-if [ -n "$X_LANG_KIT" ]; then
-	KIT="$X_LANG_KIT"
+if [ -n "$X_BUNDLE_KIT" ]; then
+	KIT="$X_BUNDLE_KIT"
 else
 	X="${X:-x}"
 	command -v "$X" >/dev/null 2>&1 || {
-		echo "x-r5rs: no x on PATH, and X_LANG_KIT is unset." >&2
-		echo "  Set X=/path/to/x.sh, or X_LANG_KIT=/path/to/x-lang/tools/lang-kit" >&2
+		echo "x-r5rs: no x on PATH, and X_BUNDLE_KIT is unset." >&2
+		echo "  Set X=/path/to/x.sh, or X_BUNDLE_KIT=/path/to/x-lang/tools/bundle-kit" >&2
 		exit 1
 	}
-	KIT="$("$X" --share-dir)/tools/lang-kit"
+	KIT="$("$X" --share-dir)/tools/bundle-kit"
 fi
 
 [ -f "$KIT/spec-gate.sh" ] || {
 	echo "x-r5rs: no spec-gate.sh under $KIT" >&2
 	# v0.10.0 below is when the kit first shipped this, not the pairing.
-	echo "  The lang kit ships it as of x-lang v0.10.0; this bundle declares which release." >&2  # release-ref: history
+	echo "  The bundle kit ships it as of x-lang v0.10.0; this bundle declares which release." >&2  # release-ref: history
 	exit 1
 }
 
